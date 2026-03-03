@@ -4,7 +4,7 @@ import { StatsBar } from "@/components/dashboard/stats-bar";
 import { TickerGrid } from "@/components/dashboard/ticker-grid";
 import { ArticlesFeed } from "@/components/dashboard/articles-feed";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const supabase = createServerClient();

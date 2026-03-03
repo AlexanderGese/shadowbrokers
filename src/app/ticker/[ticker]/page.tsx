@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 interface TickerPageProps {
   params: Promise<{ ticker: string }>;

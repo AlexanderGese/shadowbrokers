@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function DashboardHeader({ lastUpdated }: { lastUpdated: string | null }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const router = useRouter();
 
   async function triggerAnalysis() {
     setLoading(true);
@@ -14,7 +16,9 @@ export function DashboardHeader({ lastUpdated }: { lastUpdated: string | null })
       const data = await res.json();
       if (data.success) {
         setStatus(`Fetched ${data.rss.fetched} articles, created ${data.analysis.insights} insights`);
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => {
+          router.refresh();
+        }, 1000);
       } else {
         setStatus(`Error: ${data.error}`);
       }
