@@ -67,3 +67,71 @@ export interface RSSArticle {
   source: string;
   published_at: string | null;
 }
+
+export interface PriceData {
+  ticker: string;
+  currentPrice: number;
+  previousClose: number;
+  changePercent: number;
+  marketCap: number | null;
+  dayHigh: number;
+  dayLow: number;
+  volume: number | null;
+  currency: string;
+  fetchedAt: string;
+}
+
+export interface WatchlistItem {
+  id: string;
+  user_id: string;
+  ticker: string;
+  created_at: string;
+}
+
+export interface PortfolioPosition {
+  id: string;
+  user_id: string;
+  ticker: string;
+  shares: number;
+  avg_price: number;
+  created_at: string;
+}
+
+export interface Alert {
+  id: string;
+  user_id: string;
+  ticker: string;
+  condition: "bullish" | "bearish" | "any_change";
+  active: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: string;
+  read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PredictionAccuracy {
+  id: string;
+  analysis_id: string;
+  ticker: string;
+  predicted_direction: string;
+  actual_direction: string | null;
+  direction_correct: boolean | null;
+  checked_at: string;
+}
+
+export interface SentimentTrendPoint {
+  date: string;
+  bullish: number;
+  bearish: number;
+  neutral: number;
+  avgConfidence: number;
+}

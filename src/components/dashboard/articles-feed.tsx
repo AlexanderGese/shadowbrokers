@@ -54,6 +54,8 @@ const sourceColors: Record<string, string> = {
   cnbc: "text-neutral",
   yahoo: "text-bullish",
   marketwatch: "text-bearish",
+  ft: "text-[#FCD0B1]",
+  ap: "text-foreground",
 };
 
 function ArticleRow({ article }: { article: ArticleWithAnalyses }) {

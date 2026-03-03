@@ -1,7 +1,13 @@
 import Link from "next/link";
-import type { TickerSummary } from "@/lib/types";
+import type { TickerSummary, PriceData } from "@/lib/types";
+import { StarButton } from "@/components/ui/star-button";
 
-export function TickerCard({ ticker }: { ticker: TickerSummary }) {
+interface TickerCardProps {
+  ticker: TickerSummary;
+  price?: PriceData;
+}
+
+export function TickerCard({ ticker, price }: TickerCardProps) {
   const sentimentColor =
     ticker.overall_sentiment === "bullish"
       ? "text-bullish border-bullish/30"
@@ -25,11 +31,14 @@ export function TickerCard({ ticker }: { ticker: TickerSummary }) {
 
   return (
     <Link href={`/ticker/${ticker.ticker}`}>
-      <div className={`border ${sentimentColor} bg-card-bg p-4 hover:bg-card-border/50 transition-colors cursor-pointer group h-full`}>
+      <div className={`border ${sentimentColor} bg-card-bg p-4 hover:bg-card-border/50 transition-all duration-150 cursor-pointer group h-full`}>
         <div className="flex items-start justify-between mb-1">
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold tracking-wider text-foreground group-hover:text-accent transition-colors">
-              {ticker.ticker}
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold tracking-wider text-foreground group-hover:text-accent transition-colors">
+                {ticker.ticker}
+              </span>
+              <StarButton ticker={ticker.ticker} size="sm" />
             </div>
             {ticker.name && (
               <div className="text-[10px] text-muted truncate mt-0.5" title={ticker.name}>
@@ -46,6 +55,18 @@ export function TickerCard({ ticker }: { ticker: TickerSummary }) {
             {directionArrow}
           </span>
         </div>
+
+        {/* Live Price */}
+        {price && (
+          <div className="mb-2 flex items-baseline gap-2">
+            <span className="text-sm font-bold text-foreground">
+              ${price.currentPrice.toFixed(2)}
+            </span>
+            <span className={`text-[10px] ${price.changePercent >= 0 ? "text-bullish" : "text-bearish"}`}>
+              {price.changePercent >= 0 ? "+" : ""}{price.changePercent.toFixed(2)}%
+            </span>
+          </div>
+        )}
 
         {/* Description */}
         {ticker.description && (

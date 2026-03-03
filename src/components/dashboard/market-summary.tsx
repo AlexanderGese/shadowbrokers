@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { TickerSummary } from "@/lib/types";
 
 interface MarketSummaryProps {
@@ -81,9 +82,9 @@ export function MarketSummary({ tickers, totalArticles }: MarketSummaryProps) {
           <div className="text-[10px] text-muted tracking-widest mb-2">TRENDING TOPICS</div>
           <div className="flex flex-wrap gap-1.5">
             {trendingTopics.map(([topic, count]) => (
-              <span key={topic} className="text-[10px] px-2 py-0.5 bg-accent/10 text-accent border border-accent/20">
+              <Link key={topic} href={`/topic/${encodeURIComponent(topic)}`} className="text-[10px] px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors">
                 {topic} <span className="text-muted">({count})</span>
-              </span>
+              </Link>
             ))}
             {trendingTopics.length === 0 && (
               <span className="text-[10px] text-muted">No topics yet</span>

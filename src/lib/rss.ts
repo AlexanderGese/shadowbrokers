@@ -1,5 +1,6 @@
 import Parser from "rss-parser";
 import { createServerClient } from "./supabase/server";
+import { RSS_FEEDS } from "./config";
 import type { RSSArticle } from "./types";
 
 const parser = new Parser({
@@ -10,13 +11,6 @@ const parser = new Parser({
     Accept: "application/rss+xml, application/xml, text/xml",
   },
 });
-
-const RSS_FEEDS = [
-  { name: "Reuters", url: "https://feeds.reuters.com/reuters/businessNews", source: "reuters" },
-  { name: "CNBC", url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", source: "cnbc" },
-  { name: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex", source: "yahoo" },
-  { name: "MarketWatch", url: "https://feeds.marketwatch.com/marketwatch/topstories/", source: "marketwatch" },
-];
 
 function stripHtml(str: string): string {
   return str.replace(/<[^>]*>/g, "").trim().slice(0, 1000);
