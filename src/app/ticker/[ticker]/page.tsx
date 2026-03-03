@@ -47,15 +47,21 @@ export default async function TickerPage({ params }: TickerPageProps) {
         ? "bg-bearish/10 border-bearish/30"
         : "bg-neutral/10 border-neutral/30";
 
+  // Collect unique topics from analyses
+  const topics = new Map<string, number>();
+  for (const a of analyses) {
+    if (a.topic) {
+      topics.set(a.topic, (topics.get(a.topic) || 0) + 1);
+    }
+  }
+  const sortedTopics = Array.from(topics.entries()).sort((a, b) => b[1] - a[1]);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Nav Header */}
       <header className="border-b border-card-border bg-card-bg px-6 py-4">
         <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-xs text-muted hover:text-accent transition-colors"
-          >
+          <Link href="/" className="text-xs text-muted hover:text-accent transition-colors">
             &larr; BACK TO DASHBOARD
           </Link>
           <span className="text-card-border">|</span>
@@ -66,19 +72,37 @@ export default async function TickerPage({ params }: TickerPageProps) {
         </div>
       </header>
 
-      {/* Ticker header */}
+      {/* Ticker Header */}
       <div className="border-b border-card-border bg-card-bg px-6 py-6">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-widest text-foreground">
-              {summary.ticker}
-            </h1>
-            <div className="text-xs text-muted uppercase tracking-wide mt-1">
-              {summary.name || summary.asset_type}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold tracking-widest text-foreground">
+                {summary.ticker}
+              </h1>
+              <span className="text-[10px] px-2 py-0.5 bg-card-border/50 text-muted uppercase tracking-wider">
+                {summary.asset_type}
+              </span>
+              {summary.sector && (
+                <span className="text-[10px] px-2 py-0.5 bg-accent/10 text-accent border border-accent/20">
+                  {summary.sector}
+                </span>
+              )}
             </div>
+            {summary.name && (
+              <div className="text-sm text-muted mb-2">{summary.name}</div>
+            )}
+            {summary.topic && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] text-muted uppercase tracking-widest">DRIVING TOPIC:</span>
+                <span className={`text-[10px] px-2 py-0.5 ${sentimentBg} ${sentimentColor} font-bold`}>
+                  {summary.topic}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className={`border ${sentimentBg} px-4 py-2 text-center`}>
+          <div className={`border ${sentimentBg} px-4 py-2 text-center shrink-0 ml-4`}>
             <div className={`text-lg font-bold ${sentimentColor}`}>
               {summary.overall_sentiment === "bullish" ? "\u25B2" : summary.overall_sentiment === "bearish" ? "\u25BC" : "\u25C6"}
             </div>
@@ -88,8 +112,18 @@ export default async function TickerPage({ params }: TickerPageProps) {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+        {/* About Section */}
+        {summary.description && (
+          <div className="mt-4 p-3 border border-card-border bg-background">
+            <div className="text-[9px] text-muted uppercase tracking-widest mb-1">ABOUT {summary.ticker}</div>
+            <div className="text-xs text-foreground leading-relaxed">
+              {summary.description}
+            </div>
+          </div>
+        )}
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
           <StatBox label="CONFIDENCE" value={`${Math.round(summary.avg_confidence * 100)}%`} color="text-accent" />
           <StatBox label="ARTICLES" value={summary.num_articles.toString()} color="text-foreground" />
           <StatBox label="BULLISH" value={summary.bullish_count.toString()} color="text-bullish" />
@@ -97,32 +131,41 @@ export default async function TickerPage({ params }: TickerPageProps) {
           <StatBox label="BEARISH" value={summary.bearish_count.toString()} color="text-bearish" />
         </div>
 
-        {/* Sentiment bar */}
+        {/* Sentiment Bar */}
         <div className="mt-4">
-          <div className="h-2 flex rounded-full overflow-hidden bg-background">
+          <div className="h-2 flex rounded-sm overflow-hidden bg-background">
             {summary.bullish_count > 0 && (
-              <div
-                className="bg-bullish"
-                style={{ width: `${(summary.bullish_count / summary.num_articles) * 100}%` }}
-              />
+              <div className="bg-bullish" style={{ width: `${(summary.bullish_count / summary.num_articles) * 100}%` }} />
             )}
             {summary.neutral_count > 0 && (
-              <div
-                className="bg-neutral"
-                style={{ width: `${(summary.neutral_count / summary.num_articles) * 100}%` }}
-              />
+              <div className="bg-neutral" style={{ width: `${(summary.neutral_count / summary.num_articles) * 100}%` }} />
             )}
             {summary.bearish_count > 0 && (
-              <div
-                className="bg-bearish"
-                style={{ width: `${(summary.bearish_count / summary.num_articles) * 100}%` }}
-              />
+              <div className="bg-bearish" style={{ width: `${(summary.bearish_count / summary.num_articles) * 100}%` }} />
             )}
+          </div>
+          <div className="flex justify-between text-[9px] mt-1">
+            <span className="text-bullish">{Math.round((summary.bullish_count / summary.num_articles) * 100)}% Bullish</span>
+            <span className="text-bearish">{Math.round((summary.bearish_count / summary.num_articles) * 100)}% Bearish</span>
           </div>
         </div>
       </div>
 
-      {/* Analyses list */}
+      {/* Topics Section */}
+      {sortedTopics.length > 0 && (
+        <div className="border-b border-card-border px-6 py-3">
+          <div className="text-[9px] text-muted uppercase tracking-widest mb-2">NEWS TOPICS AFFECTING {summary.ticker}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {sortedTopics.map(([topic, count]) => (
+              <span key={topic} className={`text-[10px] px-2 py-0.5 ${sentimentBg} ${sentimentColor}`}>
+                {topic} <span className="opacity-60">({count})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Analyses List */}
       <div className="px-6 py-4">
         <div className="text-[10px] text-muted tracking-widest mb-3">
           ANALYSIS HISTORY ({analyses.length} entries)
@@ -162,15 +205,22 @@ export default async function TickerPage({ params }: TickerPageProps) {
                         {article.title}
                       </a>
                     )}
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {article && (
-                        <span className="text-[10px] text-muted uppercase">
-                          {article.source}
-                        </span>
+                        <span className="text-[10px] text-muted uppercase">{article.source}</span>
                       )}
                       {article?.published_at && (
                         <span className="text-[10px] text-muted">
                           {new Date(article.published_at).toLocaleDateString()}
+                        </span>
+                      )}
+                      {analysis.topic && (
+                        <span className={`text-[9px] px-1.5 py-px ${
+                          analysis.sentiment === "bullish" ? "bg-bullish/10 text-bullish" :
+                          analysis.sentiment === "bearish" ? "bg-bearish/10 text-bearish" :
+                          "bg-neutral/10 text-neutral"
+                        }`}>
+                          {analysis.topic}
                         </span>
                       )}
                     </div>
@@ -222,7 +272,7 @@ export default async function TickerPage({ params }: TickerPageProps) {
 
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="border border-card-border bg-card-bg px-3 py-2">
+    <div className="border border-card-border bg-background px-3 py-2">
       <div className="text-[10px] text-muted tracking-wider">{label}</div>
       <div className={`text-lg font-bold ${color}`}>{value}</div>
     </div>

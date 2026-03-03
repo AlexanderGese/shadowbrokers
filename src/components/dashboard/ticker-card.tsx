@@ -25,22 +25,50 @@ export function TickerCard({ ticker }: { ticker: TickerSummary }) {
 
   return (
     <Link href={`/ticker/${ticker.ticker}`}>
-      <div className={`border ${sentimentColor} bg-card-bg p-4 hover:bg-card-border/50 transition-colors cursor-pointer group`}>
-        <div className="flex items-start justify-between mb-3">
-          <div>
+      <div className={`border ${sentimentColor} bg-card-bg p-4 hover:bg-card-border/50 transition-colors cursor-pointer group h-full`}>
+        <div className="flex items-start justify-between mb-1">
+          <div className="min-w-0 flex-1">
             <div className="text-sm font-bold tracking-wider text-foreground group-hover:text-accent transition-colors">
               {ticker.ticker}
             </div>
-            <div className="text-[10px] text-muted uppercase tracking-wide">
-              {ticker.asset_type}
-            </div>
+            {ticker.name && (
+              <div className="text-[10px] text-muted truncate mt-0.5" title={ticker.name}>
+                {ticker.name}
+              </div>
+            )}
+            {!ticker.name && (
+              <div className="text-[10px] text-muted uppercase tracking-wide mt-0.5">
+                {ticker.asset_type}
+              </div>
+            )}
           </div>
-          <span className={`text-lg ${sentimentColor}`}>
+          <span className={`text-lg ${sentimentColor} shrink-0 ml-2`}>
             {directionArrow}
           </span>
         </div>
 
-        <div className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${sentimentBg} ${sentimentColor} mb-3`}>
+        {/* Description */}
+        {ticker.description && (
+          <div className="text-[9px] text-muted leading-relaxed line-clamp-2 mb-2">
+            {ticker.description}
+          </div>
+        )}
+
+        {/* Tags row: sector + topic */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {ticker.sector && (
+            <span className="text-[8px] px-1.5 py-px bg-card-border/50 text-muted uppercase tracking-wider">
+              {ticker.sector}
+            </span>
+          )}
+          {ticker.topic && (
+            <span className={`text-[8px] px-1.5 py-px ${sentimentBg} ${sentimentColor}`}>
+              {ticker.topic}
+            </span>
+          )}
+        </div>
+
+        <div className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${sentimentBg} ${sentimentColor} mb-2`}>
           {ticker.overall_sentiment}
         </div>
 
@@ -69,7 +97,7 @@ export function TickerCard({ ticker }: { ticker: TickerSummary }) {
           <span className="text-bullish">{ticker.bullish_count}B</span>
           <span className="text-neutral">{ticker.neutral_count}N</span>
           <span className="text-bearish">{ticker.bearish_count}R</span>
-          <span className="text-muted ml-auto">{ticker.num_articles} articles</span>
+          <span className="text-muted ml-auto">{ticker.num_articles} arts</span>
         </div>
       </div>
     </Link>

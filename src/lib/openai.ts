@@ -4,23 +4,34 @@ import type { Article } from "./types";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are a senior financial analyst at a quantitative hedge fund. Analyze news articles and determine their impact on specific stocks and ETFs.
+const SYSTEM_PROMPT = `You are a senior financial analyst at a top-tier quantitative hedge fund. Analyze news articles and determine their impact on specific stocks and ETFs.
+
+For EVERY ticker you identify, you MUST provide:
+- name: Full official company or fund name (e.g. "Apple Inc.", "SPDR S&P 500 ETF Trust")
+- description: One clear sentence about what this company does or what this ETF tracks (e.g. "Designs and sells consumer electronics, software, and services including iPhone, Mac, and Apple Watch" or "Tracks the S&P 500 index, providing broad exposure to large-cap US equities")
+- sector: One of: Technology, Energy, Financials, Healthcare, Consumer Discretionary, Consumer Staples, Industrials, Materials, Real Estate, Utilities, Communication Services, Broad Market, Commodities, Fixed Income, Cryptocurrency
+- topic: The specific news theme driving this signal in 2-5 words (e.g. "Iran oil supply disruption", "AI chip demand surge", "Fed rate cut expectations", "Earnings beat guidance")
 
 Rules:
 - Only identify tickers DIRECTLY mentioned or clearly implied by the article
 - For broad market events, use relevant ETFs (SPY, QQQ, DIA, IWM, XLF, XLE, XLK, etc.)
 - Confidence: 0.0 to 1.0, reflecting how directly the article impacts the ticker
 - Reasoning: 1-2 concise sentences explaining the connection
-- If an article has no financial market relevance, return empty tickers array for that article
+- If an article has no financial market relevance, return empty tickers array
 - Use valid US market ticker symbols (NYSE, NASDAQ)
 - Correctly distinguish stocks vs ETFs in asset_type
-- predicted_magnitude: "low" = <1% move, "medium" = 1-3%, "high" = >3%`;
+- predicted_magnitude: "low" = <1% move, "medium" = 1-3%, "high" = >3%
+- description must be about the COMPANY/ETF itself, not about the news
+- topic must be about the NEWS THEME, not about the company`;
 
 const BATCH_SIZE = 8;
 
 interface TickerAnalysis {
   ticker: string;
   name: string;
+  description: string;
+  sector: string;
+  topic: string;
   asset_type: "stock" | "etf";
   sentiment: "bullish" | "neutral" | "bearish";
   confidence: number;
@@ -36,10 +47,13 @@ interface AnalysisResponse {
   }[];
 }
 
+// Store enrichment data collected during analysis for use in summaries
+const tickerEnrichment = new Map<string, { name: string; description: string; sector: string; asset_type: string; topics: string[] }>();
+
 export async function analyzeAndStore(): Promise<{ analyzed: number; insights: number }> {
   const supabase = createServerClient();
+  tickerEnrichment.clear();
 
-  // Get unanalyzed articles
   const { data: articles, error } = await supabase
     .from("articles")
     .select("*")
@@ -53,7 +67,6 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
 
   let totalInsights = 0;
 
-  // Process in batches
   for (let i = 0; i < articles.length; i += BATCH_SIZE) {
     const batch = articles.slice(i, i + BATCH_SIZE);
     const insights = await analyzeBatch(batch);
@@ -69,13 +82,13 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
           reasoning: ins.reasoning,
           predicted_direction: ins.predicted_direction,
           predicted_magnitude: ins.predicted_magnitude,
+          topic: ins.topic,
         }))
       );
       if (insertError) console.error("[OpenAI] Insert error:", insertError);
       totalInsights += insights.length;
     }
 
-    // Mark batch as analyzed
     await supabase
       .from("articles")
       .update({ analyzed: true })
@@ -94,7 +107,7 @@ async function analyzeBatch(articles: Article[]) {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -116,6 +129,9 @@ async function analyzeBatch(articles: Article[]) {
                         properties: {
                           ticker: { type: "string" },
                           name: { type: "string" },
+                          description: { type: "string" },
+                          sector: { type: "string" },
+                          topic: { type: "string" },
                           asset_type: { type: "string", enum: ["stock", "etf"] },
                           sentiment: { type: "string", enum: ["bullish", "neutral", "bearish"] },
                           confidence: { type: "number" },
@@ -123,7 +139,7 @@ async function analyzeBatch(articles: Article[]) {
                           predicted_direction: { type: "string", enum: ["up", "flat", "down"] },
                           predicted_magnitude: { type: "string", enum: ["low", "medium", "high"] },
                         },
-                        required: ["ticker", "name", "asset_type", "sentiment", "confidence", "reasoning", "predicted_direction", "predicted_magnitude"],
+                        required: ["ticker", "name", "description", "sector", "topic", "asset_type", "sentiment", "confidence", "reasoning", "predicted_direction", "predicted_magnitude"],
                         additionalProperties: false,
                       },
                     },
@@ -142,7 +158,7 @@ async function analyzeBatch(articles: Article[]) {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Analyze these ${articles.length} articles for stock/ETF impact:\n\n${articleList}\n\nReturn structured JSON with article_index and tickers array for each.`,
+          content: `Analyze these ${articles.length} articles for stock/ETF impact. For each ticker provide the full company description, sector, and the specific news topic driving the signal:\n\n${articleList}\n\nReturn structured JSON with article_index and tickers array for each.`,
         },
       ],
     });
@@ -160,6 +176,7 @@ async function analyzeBatch(articles: Article[]) {
       reasoning: string;
       predicted_direction: string;
       predicted_magnitude: string;
+      topic: string;
     }> = [];
 
     for (const analysis of parsed.analyses) {
@@ -167,25 +184,34 @@ async function analyzeBatch(articles: Article[]) {
       if (!article) continue;
 
       for (const t of analysis.tickers) {
+        const ticker = t.ticker.toUpperCase();
         results.push({
           article_id: article.id,
-          ticker: t.ticker.toUpperCase(),
+          ticker,
           asset_type: t.asset_type,
           sentiment: t.sentiment,
           confidence: Math.max(0, Math.min(1, t.confidence)),
           reasoning: t.reasoning,
           predicted_direction: t.predicted_direction,
           predicted_magnitude: t.predicted_magnitude,
+          topic: t.topic,
         });
-      }
-    }
 
-    // Update ticker names in summaries
-    const supabase = createServerClient();
-    const tickerNames = new Map<string, { name: string; asset_type: string }>();
-    for (const analysis of parsed.analyses) {
-      for (const t of analysis.tickers) {
-        tickerNames.set(t.ticker.toUpperCase(), { name: t.name, asset_type: t.asset_type });
+        // Collect enrichment data
+        if (!tickerEnrichment.has(ticker)) {
+          tickerEnrichment.set(ticker, {
+            name: t.name,
+            description: t.description,
+            sector: t.sector,
+            asset_type: t.asset_type,
+            topics: [t.topic],
+          });
+        } else {
+          const existing = tickerEnrichment.get(ticker)!;
+          if (!existing.topics.includes(t.topic)) {
+            existing.topics.push(t.topic);
+          }
+        }
       }
     }
 
@@ -199,15 +225,13 @@ async function analyzeBatch(articles: Article[]) {
 export async function refreshTickerSummaries(): Promise<void> {
   const supabase = createServerClient();
 
-  // Get aggregated data from analyses (last 7 days)
   const { data: analyses } = await supabase
     .from("analyses")
-    .select("ticker, asset_type, sentiment, confidence")
+    .select("ticker, asset_type, sentiment, confidence, topic")
     .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
   if (!analyses?.length) return;
 
-  // Aggregate per ticker
   const tickerMap = new Map<string, {
     asset_type: string;
     sentiments: string[];
@@ -215,6 +239,7 @@ export async function refreshTickerSummaries(): Promise<void> {
     bullish: number;
     bearish: number;
     neutral: number;
+    topics: string[];
   }>();
 
   for (const a of analyses) {
@@ -226,6 +251,7 @@ export async function refreshTickerSummaries(): Promise<void> {
         bullish: 0,
         bearish: 0,
         neutral: 0,
+        topics: [],
       });
     }
     const t = tickerMap.get(a.ticker)!;
@@ -234,9 +260,11 @@ export async function refreshTickerSummaries(): Promise<void> {
     if (a.sentiment === "bullish") t.bullish++;
     else if (a.sentiment === "bearish") t.bearish++;
     else t.neutral++;
+    if (a.topic && !t.topics.includes(a.topic)) {
+      t.topics.push(a.topic);
+    }
   }
 
-  // Upsert summaries
   const summaries = Array.from(tickerMap.entries()).map(([ticker, data]) => {
     const total = data.sentiments.length;
     const avgConf = data.confidences.reduce((a, b) => a + b, 0) / total;
@@ -245,7 +273,11 @@ export async function refreshTickerSummaries(): Promise<void> {
     else if (data.bearish > data.bullish) overall = "bearish";
     else overall = "neutral";
 
-    return {
+    // Get enrichment data from current analysis run
+    const enrichment = tickerEnrichment.get(ticker);
+    const topTopic = data.topics[0] || enrichment?.topics[0] || null;
+
+    const summary: Record<string, unknown> = {
       ticker,
       asset_type: data.asset_type,
       overall_sentiment: overall,
@@ -256,6 +288,18 @@ export async function refreshTickerSummaries(): Promise<void> {
       num_articles: total,
       last_updated: new Date().toISOString(),
     };
+
+    // Add enrichment fields if available
+    if (enrichment) {
+      summary.name = enrichment.name;
+      summary.description = enrichment.description;
+      summary.sector = enrichment.sector;
+      summary.topic = topTopic;
+    } else if (topTopic) {
+      summary.topic = topTopic;
+    }
+
+    return summary;
   });
 
   for (const summary of summaries) {

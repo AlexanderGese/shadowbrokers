@@ -19,6 +19,7 @@ export interface Analysis {
   reasoning: string;
   predicted_direction: "up" | "flat" | "down";
   predicted_magnitude: "low" | "medium" | "high";
+  topic: string | null;
   created_at: string;
 }
 
@@ -27,6 +28,9 @@ export interface TickerSummary {
   ticker: string;
   name: string | null;
   asset_type: string;
+  description: string | null;
+  sector: string | null;
+  topic: string | null;
   overall_sentiment: string;
   avg_confidence: number;
   bullish_count: number;
@@ -45,6 +49,9 @@ export interface AnalysisResult {
     ticker: string;
     name: string;
     asset_type: "stock" | "etf";
+    description: string;
+    sector: string;
+    topic: string;
     sentiment: "bullish" | "neutral" | "bearish";
     confidence: number;
     reasoning: string;

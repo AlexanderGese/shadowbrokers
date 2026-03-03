@@ -4,7 +4,11 @@ interface ArticleWithAnalyses extends Article {
   analyses: Pick<Analysis, "ticker" | "sentiment" | "confidence">[];
 }
 
-export function ArticlesFeed({ articles }: { articles: ArticleWithAnalyses[] }) {
+interface ArticlesFeedProps {
+  articles: ArticleWithAnalyses[];
+}
+
+export function ArticlesFeed({ articles }: ArticlesFeedProps) {
   if (articles.length === 0) {
     return (
       <div className="border border-card-border bg-card-bg p-6 text-center">
@@ -15,13 +19,28 @@ export function ArticlesFeed({ articles }: { articles: ArticleWithAnalyses[] }) 
     );
   }
 
+  // Source stats
+  const sourceCounts = new Map<string, number>();
+  for (const a of articles) {
+    sourceCounts.set(a.source, (sourceCounts.get(a.source) || 0) + 1);
+  }
+
   return (
     <div className="border border-card-border bg-card-bg">
-      <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
-        <span className="text-[10px] text-muted tracking-widest">LATEST ARTICLES</span>
-        <span className="text-[10px] text-muted">{articles.length} items</span>
+      <div className="px-4 py-2 border-b border-card-border">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] text-muted tracking-widest">NEWS FEED</span>
+          <span className="text-[10px] text-muted">{articles.length} articles</span>
+        </div>
+        <div className="flex gap-2">
+          {Array.from(sourceCounts.entries()).map(([source, count]) => (
+            <span key={source} className={`text-[8px] px-1.5 py-px uppercase tracking-wider ${sourceColors[source] || "text-muted"} bg-card-border/30`}>
+              {source} ({count})
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="divide-y divide-card-border max-h-[600px] overflow-y-auto">
+      <div className="divide-y divide-card-border max-h-[700px] overflow-y-auto">
         {articles.map((article) => (
           <ArticleRow key={article.id} article={article} />
         ))}
@@ -29,6 +48,13 @@ export function ArticlesFeed({ articles }: { articles: ArticleWithAnalyses[] }) 
     </div>
   );
 }
+
+const sourceColors: Record<string, string> = {
+  reuters: "text-accent",
+  cnbc: "text-neutral",
+  yahoo: "text-bullish",
+  marketwatch: "text-bearish",
+};
 
 function ArticleRow({ article }: { article: ArticleWithAnalyses }) {
   const topSentiment = article.analyses?.[0]?.sentiment;
@@ -40,13 +66,6 @@ function ArticleRow({ article }: { article: ArticleWithAnalyses }) {
         : topSentiment === "neutral"
           ? "bg-neutral"
           : "bg-muted";
-
-  const sourceColors: Record<string, string> = {
-    reuters: "text-accent",
-    cnbc: "text-neutral",
-    yahoo: "text-bullish",
-    marketwatch: "text-bearish",
-  };
 
   const timeAgo = article.published_at
     ? getTimeAgo(new Date(article.published_at))
@@ -65,14 +84,19 @@ function ArticleRow({ article }: { article: ArticleWithAnalyses }) {
           <div className="text-xs text-foreground leading-relaxed line-clamp-2">
             {article.title}
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          {article.description && (
+            <div className="text-[10px] text-muted leading-relaxed line-clamp-1 mt-0.5">
+              {article.description}
+            </div>
+          )}
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`text-[10px] uppercase tracking-wider ${sourceColors[article.source] || "text-muted"}`}>
               {article.source}
             </span>
             <span className="text-[10px] text-muted">{timeAgo}</span>
             {article.analyses?.length > 0 && (
-              <div className="flex gap-1 ml-auto">
-                {article.analyses.slice(0, 3).map((a, i) => (
+              <div className="flex gap-1 flex-wrap">
+                {article.analyses.map((a, i) => (
                   <span
                     key={i}
                     className={`text-[9px] px-1 ${
