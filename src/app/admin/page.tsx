@@ -91,6 +91,7 @@ export default function AdminPage() {
   // Analytics tab
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsRange, setAnalyticsRange] = useState<"all" | "7d" | "30d">("7d");
 
   // Discord webhook
   const [discordConfigured, setDiscordConfigured] = useState(false);
@@ -200,10 +201,10 @@ export default function AdminPage() {
     }
   }, []);
 
-  async function loadAnalytics() {
+  const loadAnalytics = useCallback(async (range: string) => {
     setAnalyticsLoading(true);
     try {
-      const res = await fetch("/api/admin/analytics");
+      const res = await fetch(`/api/admin/analytics?range=${range}`);
       const data = await res.json();
       setAnalytics(data);
     } catch {
@@ -211,13 +212,13 @@ export default function AdminPage() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     if (tab === "users" && users.length === 0) loadUsers();
     if (tab === "data" && articles.length === 0) loadArticles(1);
-    if (tab === "analytics" && !analytics) loadAnalytics();
-  }, [tab, users.length, articles.length, analytics, loadArticles]);
+    if (tab === "analytics") loadAnalytics(analyticsRange);
+  }, [tab, users.length, articles.length, analyticsRange, loadArticles, loadAnalytics]);
 
   async function runAction(endpoint: string, method: string, label: string) {
     setActionLoading(label);
@@ -773,8 +774,23 @@ export default function AdminPage() {
                 <>
                   {/* Accuracy */}
                   <div className="border-b border-card-border">
-                    <div className="px-4 py-2 border-b border-card-border">
+                    <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
                       <span className="text-[10px] text-muted tracking-widest">PREDICTION ACCURACY</span>
+                      <div className="flex gap-1">
+                        {(["7d", "30d", "all"] as const).map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => setAnalyticsRange(r)}
+                            className={`px-2 py-0.5 text-[10px] tracking-widest font-bold border transition-colors ${
+                              analyticsRange === r
+                                ? "text-accent border-accent"
+                                : "text-muted border-card-border hover:text-foreground"
+                            }`}
+                          >
+                            {r.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className="grid grid-cols-3">
                       <StatBox label="ACCURACY" value={`${analytics.accuracy.percentCorrect}%`} color="text-accent" />
