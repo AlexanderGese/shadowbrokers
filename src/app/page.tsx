@@ -136,6 +136,9 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <a href="/pricing" className="text-[10px] px-3 py-1 border border-card-border text-muted hover:text-accent hover:border-accent/30 transition-colors tracking-widest">
+              PRICING
+            </a>
             <span className="text-[10px] px-3 py-1 border border-accent/20 text-accent tracking-widest">
               EARLY ACCESS
             </span>
@@ -354,15 +357,26 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-card-border px-4 py-3 flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[10px] text-muted tracking-wider">
-          SHADOWBROKERS v5.0 | AI-POWERED MARKET INTELLIGENCE
-        </span>
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-bullish pulse-dot" />
-          <span className="text-[10px] text-bullish tracking-wider">
-            WAITLIST OPEN
+      <footer className="border-t border-card-border px-4 py-3">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <span className="text-[10px] text-muted tracking-wider">
+            SHADOWBROKERS v5.0 | AI-POWERED MARKET INTELLIGENCE
           </span>
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-bullish pulse-dot" />
+            <span className="text-[10px] text-bullish tracking-wider">
+              WAITLIST OPEN
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 border-t border-card-border/50 pt-2">
+          <a href="/pricing" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">PRICING</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/terms" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">TERMS</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/privacy" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">PRIVACY</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/disclaimer" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">DISCLAIMER</a>
         </div>
       </footer>
     </div>

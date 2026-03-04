@@ -85,6 +85,13 @@ export function UserMenu() {
           >
             ALERTS
           </Link>
+          <Link
+            href="/pricing"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 text-[10px] text-muted hover:text-foreground hover:bg-card-border/30 transition-colors tracking-widest"
+          >
+            PRICING
+          </Link>
           {admin && (
             <>
               <div className="border-t border-card-border" />

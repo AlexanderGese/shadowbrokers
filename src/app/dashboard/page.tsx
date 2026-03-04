@@ -41,17 +41,28 @@ export default async function DashboardPage() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-card-border px-4 py-2 flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[10px] text-muted tracking-wider">
-          SHADOWBROKERS v6.0 | AI-POWERED MARKET INTELLIGENCE
-        </span>
-        <div className="flex items-center gap-3">
-          <a href="/compare" className="text-[10px] text-muted hover:text-accent transition-colors">COMPARE</a>
-          <a href="/portfolio" className="text-[10px] text-muted hover:text-accent transition-colors">PORTFOLIO</a>
-          <a href="/alerts" className="text-[10px] text-muted hover:text-accent transition-colors">ALERTS</a>
-          <span className="text-[10px] text-muted">
-            HOURLY ANALYSIS | GPT-4O-MINI
+      <footer className="border-t border-card-border px-4 py-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-[10px] text-muted tracking-wider">
+            SHADOWBROKERS v6.0 | AI-POWERED MARKET INTELLIGENCE
           </span>
+          <div className="flex items-center gap-3">
+            <a href="/compare" className="text-[10px] text-muted hover:text-accent transition-colors">COMPARE</a>
+            <a href="/portfolio" className="text-[10px] text-muted hover:text-accent transition-colors">PORTFOLIO</a>
+            <a href="/alerts" className="text-[10px] text-muted hover:text-accent transition-colors">ALERTS</a>
+            <span className="text-[10px] text-muted">
+              HOURLY ANALYSIS | GPT-4O-MINI
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 border-t border-card-border/50 mt-2 pt-2">
+          <a href="/pricing" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">PRICING</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/terms" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">TERMS</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/privacy" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">PRIVACY</a>
+          <span className="text-[10px] text-muted/30">|</span>
+          <a href="/disclaimer" className="text-[10px] text-muted hover:text-accent transition-colors tracking-wider">DISCLAIMER</a>
         </div>
       </footer>
     </div>

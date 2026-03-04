@@ -135,3 +135,14 @@ export interface SentimentTrendPoint {
   neutral: number;
   avgConfidence: number;
 }
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan: "free" | "pro" | "ultra";
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  status: "active" | "canceled" | "past_due" | "trialing" | "incomplete";
+  current_period_start: string;
+  current_period_end: string;
+}
