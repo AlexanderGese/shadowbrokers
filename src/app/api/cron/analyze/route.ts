@@ -3,6 +3,7 @@ import { fetchAndSaveArticles } from "@/lib/rss";
 import { analyzeAndStore, refreshTickerSummaries } from "@/lib/openai";
 import { checkAndTriggerAlerts } from "@/lib/alerts";
 import { checkPredictionAccuracy } from "@/lib/accuracy";
+import { generateBriefing } from "@/lib/briefing";
 
 export const maxDuration = 60;
 
@@ -33,12 +34,22 @@ export async function GET(request: NextRequest) {
       console.error("[CRON] Alerts check error:", e);
     }
 
+    // Generate market briefing
+    let briefingGenerated = false;
+    try {
+      const briefing = await generateBriefing();
+      briefingGenerated = briefing !== null;
+    } catch (e) {
+      console.error("[CRON] Briefing generation error:", e);
+    }
+
     return NextResponse.json({
       success: true,
       rss: rssResult,
       analysis: analysisResult,
       accuracyChecked,
       alertsTriggered,
+      briefingGenerated,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

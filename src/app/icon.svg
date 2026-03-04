@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Hexagonal frame -->
+  <polygon points="32,2 58,17 58,47 32,62 6,47 6,17" fill="#0a0a0a" stroke="#00aaff" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Angular S shape -->
+  <path d="M 22 18 L 42 18 L 42 28 L 22 28 L 22 38 L 42 38 L 42 48 L 22 48" fill="none" stroke="#00aaff" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"/>
+  <!-- Green accent line -->
+  <line x1="18" y1="32" x2="28" y2="32" stroke="#00ff88" stroke-width="2" stroke-linecap="square"/>
+  <!-- Red glitch artifact -->
+  <rect x="38" y="22" width="8" height="2" fill="#ff4444" opacity="0.8"/>
+</svg>

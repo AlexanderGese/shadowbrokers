@@ -130,7 +130,7 @@ export default function LandingPage() {
       <header className="border-b border-card-border bg-card-bg/80 backdrop-blur-sm px-4 md:px-6 py-3">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-bullish pulse-dot" />
+            <img src="/logo.svg" className="h-6 w-6" alt="ShadowBrokers" />
             <span className="text-sm md:text-lg font-bold tracking-widest text-foreground">
               SHADOWBROKERS
             </span>

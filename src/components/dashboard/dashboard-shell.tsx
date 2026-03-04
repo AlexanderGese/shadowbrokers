@@ -10,6 +10,7 @@ import { TickerGrid } from "./ticker-grid";
 import { TickerTable } from "./ticker-table";
 import { ArticlesFeed } from "./articles-feed";
 import { MarketSentimentChart } from "@/components/charts/market-sentiment-chart";
+import { MarketBriefing } from "./market-briefing";
 import { IndexBar } from "./index-bar";
 import type { TickerSummary, Article, Analysis } from "@/lib/types";
 
@@ -50,6 +51,9 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
           break;
         case "4":
           handleTabChange("CHARTS");
+          break;
+        case "5":
+          handleTabChange("BRIEFING");
           break;
         case "c":
         case "C":
@@ -92,6 +96,10 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
 
       {activeTab === "CHARTS" && (
         <MarketSentimentChart />
+      )}
+
+      {activeTab === "BRIEFING" && (
+        <MarketBriefing />
       )}
     </>
   );

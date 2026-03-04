@@ -101,7 +101,7 @@ export interface Alert {
   id: string;
   user_id: string;
   ticker: string;
-  condition: "bullish" | "bearish" | "any_change";
+  condition: "bullish" | "bearish" | "any_change" | "danger" | "high_move" | "sentiment_flip";
   active: boolean;
   last_triggered_at: string | null;
   created_at: string;

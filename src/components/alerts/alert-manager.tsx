@@ -40,6 +40,9 @@ export function AlertManager({ ticker }: AlertManagerProps) {
         <option value="bullish">BULLISH</option>
         <option value="bearish">BEARISH</option>
         <option value="any_change">ANY CHANGE</option>
+        <option value="danger">DANGER</option>
+        <option value="high_move">HIGH MOVE</option>
+        <option value="sentiment_flip">SENTIMENT FLIP</option>
       </select>
       <button
         onClick={createAlert}

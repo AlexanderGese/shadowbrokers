@@ -96,9 +96,12 @@ export default function AlertsPage() {
                   <span className={`text-[10px] px-2 py-0.5 uppercase tracking-wider ${
                     alert.condition === "bullish" ? "text-bullish bg-bullish/10" :
                     alert.condition === "bearish" ? "text-bearish bg-bearish/10" :
+                    alert.condition === "danger" ? "text-bearish bg-bearish/10" :
+                    alert.condition === "high_move" ? "text-neutral bg-neutral/10" :
+                    alert.condition === "sentiment_flip" ? "text-accent bg-accent/10" :
                     "text-neutral bg-neutral/10"
                   }`}>
-                    {alert.condition}
+                    {alert.condition.replace(/_/g, " ")}
                   </span>
                   <span className={`text-[9px] ${alert.active ? "text-bullish" : "text-muted"}`}>
                     {alert.active ? "ACTIVE" : "PAUSED"}

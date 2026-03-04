@@ -92,6 +92,9 @@ export default function AdminPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  // Discord webhook
+  const [discordConfigured, setDiscordConfigured] = useState(false);
+
   // Environment check
   const [envStatus, setEnvStatus] = useState<Record<string, boolean>>({});
 
@@ -121,7 +124,30 @@ export default function AdminPage() {
       }
     }
     setEnvStatus(status);
+    // Check Discord webhook status
+    fetch("/api/admin/webhook")
+      .then((r) => r.json())
+      .then((d) => setDiscordConfigured(d.configured))
+      .catch(() => {});
   }, [loadStats]);
+
+  async function testWebhook() {
+    setActionLoading("webhook");
+    setActionStatus(null);
+    try {
+      const res = await fetch("/api/admin/webhook", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setActionStatus("Discord webhook test sent successfully!");
+      } else {
+        setActionStatus("Webhook test failed — check URL configuration.");
+      }
+    } catch {
+      setActionStatus("Network error");
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   async function loadUsers() {
     setUsersLoading(true);
@@ -694,7 +720,7 @@ export default function AdminPage() {
               </div>
 
               {/* Cache Stats */}
-              <div>
+              <div className="border-b border-card-border">
                 <div className="px-4 py-2 border-b border-card-border">
                   <span className="text-[10px] text-muted tracking-widest">CACHE</span>
                 </div>
@@ -703,6 +729,36 @@ export default function AdminPage() {
                     <span className="text-[10px] text-muted">PRICE CACHE ENTRIES:</span>
                     <span className="text-sm font-bold text-foreground">{stats?.cacheEntries || 0}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Discord Webhook */}
+              <div>
+                <div className="px-4 py-2 border-b border-card-border">
+                  <span className="text-[10px] text-muted tracking-widest">DISCORD WEBHOOK</span>
+                </div>
+                <div className="px-6 py-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-muted">STATUS:</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-2 w-2 rounded-full ${discordConfigured ? "bg-bullish" : "bg-bearish"}`} />
+                      <span className={`text-[10px] font-bold ${discordConfigured ? "text-bullish" : "text-bearish"}`}>
+                        {discordConfigured ? "CONFIGURED" : "NOT SET"}
+                      </span>
+                    </div>
+                  </div>
+                  {!discordConfigured && (
+                    <div className="text-[10px] text-muted">
+                      Set <span className="font-mono text-foreground">DISCORD_WEBHOOK_URL</span> in your environment variables to enable Discord notifications.
+                    </div>
+                  )}
+                  <button
+                    onClick={testWebhook}
+                    disabled={!discordConfigured || actionLoading !== null}
+                    className="text-[10px] px-4 py-2 border border-accent/30 text-accent hover:bg-accent/10 transition-colors tracking-widest disabled:opacity-50"
+                  >
+                    {actionLoading === "webhook" ? "SENDING..." : "TEST WEBHOOK"}
+                  </button>
                 </div>
               </div>
             </div>

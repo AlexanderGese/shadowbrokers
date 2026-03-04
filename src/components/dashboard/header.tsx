@@ -11,7 +11,7 @@ export function DashboardHeader({ lastUpdated }: { lastUpdated: string | null })
         {/* Left: Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <a href="/dashboard" className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-bullish pulse-dot" />
+            <img src="/logo.svg" className="h-5 w-5" alt="ShadowBrokers" />
             <h1 className="text-sm md:text-lg font-bold tracking-widest text-foreground">
               SHADOWBROKERS
             </h1>

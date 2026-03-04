@@ -43,14 +43,14 @@ export default async function DashboardPage() {
       {/* Footer */}
       <footer className="border-t border-card-border px-4 py-2 flex items-center justify-between flex-wrap gap-2">
         <span className="text-[10px] text-muted tracking-wider">
-          SHADOWBROKERS v4.0 | AI-POWERED MARKET INTELLIGENCE
+          SHADOWBROKERS v6.0 | AI-POWERED MARKET INTELLIGENCE
         </span>
         <div className="flex items-center gap-3">
           <a href="/compare" className="text-[10px] text-muted hover:text-accent transition-colors">COMPARE</a>
           <a href="/portfolio" className="text-[10px] text-muted hover:text-accent transition-colors">PORTFOLIO</a>
           <a href="/alerts" className="text-[10px] text-muted hover:text-accent transition-colors">ALERTS</a>
           <span className="text-[10px] text-muted">
-            DAILY @ 08:00 UTC | GPT-4O-MINI
+            HOURLY ANALYSIS | GPT-4O-MINI
           </span>
         </div>
       </footer>
