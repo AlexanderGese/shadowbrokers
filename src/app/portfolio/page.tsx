@@ -118,12 +118,22 @@ export default function PortfolioPage() {
             <span className="text-card-border">|</span>
             <span className="text-xs text-muted tracking-widest">PORTFOLIO</span>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="text-[10px] px-3 py-1 border border-accent/30 text-accent hover:bg-accent/10 transition-colors tracking-widest"
-          >
-            + ADD POSITION
-          </button>
+          <div className="flex items-center gap-2">
+            {positions.length > 0 && (
+              <a
+                href="/api/export/portfolio"
+                className="text-[10px] px-3 py-1 border border-card-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors tracking-widest"
+              >
+                EXPORT CSV
+              </a>
+            )}
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="text-[10px] px-3 py-1 border border-accent/30 text-accent hover:bg-accent/10 transition-colors tracking-widest"
+            >
+              + ADD POSITION
+            </button>
+          </div>
         </div>
       </header>
 

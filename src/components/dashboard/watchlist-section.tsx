@@ -66,8 +66,16 @@ export function WatchlistSection() {
 
   return (
     <div className="border-b border-card-border">
-      <div className="px-4 py-2 border-b border-card-border">
+      <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
         <span className="text-[10px] text-muted tracking-widest">YOUR WATCHLIST</span>
+        {items.length > 0 && (
+          <a
+            href="/api/export/watchlist"
+            className="text-[10px] px-3 py-1 border border-card-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors tracking-widest"
+          >
+            EXPORT CSV
+          </a>
+        )}
       </div>
       <div className="flex gap-px bg-card-border overflow-x-auto">
         {items.map((item) => {

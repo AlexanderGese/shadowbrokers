@@ -54,6 +54,9 @@ interface AnalyticsData {
   sourceBreakdown: { source: string; count: number }[];
   topTickers: { ticker: string; numArticles: number }[];
   sentimentDist: { bullish: number; bearish: number; neutral: number };
+  pipelineHealth: { lastRunAt: string | null; runsLast24h: number; successRate: number };
+  accuracyBySector: { sector: string; total: number; correct: number; pct: number }[];
+  articleTrend: { date: string; count: number }[];
 }
 
 const TABS: { key: Tab; label: string }[] = [
@@ -798,6 +801,37 @@ export default function AdminPage() {
 
               {analytics ? (
                 <>
+                  {/* Pipeline Health */}
+                  {analytics.pipelineHealth && (
+                    <div className="border-b border-card-border">
+                      <div className="px-4 py-2 border-b border-card-border">
+                        <span className="text-[10px] text-muted tracking-widest">PIPELINE HEALTH</span>
+                      </div>
+                      <div className="grid grid-cols-3">
+                        <div className="border-r border-b border-card-border px-4 py-3">
+                          <div className="text-[9px] text-muted tracking-wider">LAST RUN</div>
+                          <div className="text-sm font-bold text-foreground">
+                            {analytics.pipelineHealth.lastRunAt
+                              ? new Date(analytics.pipelineHealth.lastRunAt).toLocaleString()
+                              : "NEVER"}
+                          </div>
+                        </div>
+                        <div className="border-r border-b border-card-border px-4 py-3">
+                          <div className="text-[9px] text-muted tracking-wider">RUNS (24H)</div>
+                          <div className={`text-xl font-bold ${analytics.pipelineHealth.runsLast24h > 0 ? "text-bullish" : "text-bearish"}`}>
+                            {analytics.pipelineHealth.runsLast24h}
+                          </div>
+                        </div>
+                        <div className="border-b border-card-border px-4 py-3">
+                          <div className="text-[9px] text-muted tracking-wider">7D UPTIME</div>
+                          <div className={`text-xl font-bold ${analytics.pipelineHealth.successRate >= 80 ? "text-bullish" : analytics.pipelineHealth.successRate >= 50 ? "text-neutral" : "text-bearish"}`}>
+                            {analytics.pipelineHealth.successRate}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Accuracy */}
                   <div className="border-b border-card-border">
                     <div className="px-4 py-2 border-b border-card-border">
@@ -832,6 +866,34 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {/* Accuracy By Sector */}
+                  {analytics.accuracyBySector && analytics.accuracyBySector.length > 0 && (
+                    <div className="border-b border-card-border">
+                      <div className="px-4 py-2 border-b border-card-border">
+                        <span className="text-[10px] text-muted tracking-widest">ACCURACY BY SECTOR</span>
+                      </div>
+                      <div className="divide-y divide-card-border">
+                        {analytics.accuracyBySector.map((s) => (
+                          <div key={s.sector} className="px-6 py-2 flex items-center justify-between text-[10px] hover:bg-card-border/10 transition-colors">
+                            <span className="text-foreground uppercase font-bold w-32 truncate">{s.sector}</span>
+                            <div className="flex items-center gap-3 flex-1 justify-end">
+                              <div className="w-40 h-1.5 bg-card-border rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${s.pct >= 50 ? "bg-bullish" : "bg-bearish"}`}
+                                  style={{ width: `${Math.min(100, s.pct)}%` }}
+                                />
+                              </div>
+                              <span className={`w-12 text-right font-bold ${s.pct >= 50 ? "text-bullish" : "text-bearish"}`}>
+                                {s.pct}%
+                              </span>
+                              <span className="text-muted w-16 text-right">{s.correct}/{s.total}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Source Breakdown */}
                   <div className="border-b border-card-border">
                     <div className="px-4 py-2 border-b border-card-border">
@@ -862,6 +924,41 @@ export default function AdminPage() {
                       <div className="px-6 py-4 text-[10px] text-muted">No articles in this time range.</div>
                     )}
                   </div>
+
+                  {/* Article Ingestion Trend */}
+                  {analytics.articleTrend && analytics.articleTrend.length > 0 && (
+                    <div className="border-b border-card-border">
+                      <div className="px-4 py-2 border-b border-card-border">
+                        <span className="text-[10px] text-muted tracking-widest">ARTICLE INGESTION TREND</span>
+                      </div>
+                      <div className="px-6 py-4">
+                        <div className="flex items-end gap-px" style={{ height: "100px" }}>
+                          {(() => {
+                            const maxCount = Math.max(...analytics.articleTrend.map((d) => d.count), 1);
+                            return analytics.articleTrend.map((d) => {
+                              const h = (d.count / maxCount) * 100;
+                              return (
+                                <div
+                                  key={d.date}
+                                  className="flex-1 flex flex-col justify-end min-w-[3px] group relative"
+                                  style={{ height: "100%" }}
+                                >
+                                  <div className="bg-accent rounded-t-sm" style={{ height: `${h}%` }} />
+                                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-card-bg border border-card-border px-2 py-1 text-[9px] text-foreground whitespace-nowrap z-10">
+                                    {d.date}: {d.count} articles
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                        <div className="flex justify-between text-[9px] text-muted mt-1">
+                          <span>{analytics.articleTrend[0]?.date}</span>
+                          <span>{analytics.articleTrend[analytics.articleTrend.length - 1]?.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Top Tickers */}
                   <div className="border-b border-card-border">

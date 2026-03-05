@@ -216,8 +216,18 @@ export default async function TickerPage({ params }: TickerPageProps) {
 
       {/* Analyses List */}
       <div className="px-6 py-4">
-        <div className="text-[10px] text-muted tracking-widest mb-3">
-          ANALYSIS HISTORY ({analyses.length} entries)
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] text-muted tracking-widest">
+            ANALYSIS HISTORY ({analyses.length} entries)
+          </span>
+          {analyses.length > 0 && (
+            <a
+              href={`/api/export/analyses?ticker=${summary.ticker}`}
+              className="text-[10px] px-3 py-1 border border-card-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors tracking-widest"
+            >
+              EXPORT CSV
+            </a>
+          )}
         </div>
 
         <div className="space-y-px">

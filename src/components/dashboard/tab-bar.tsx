@@ -1,6 +1,6 @@
 "use client";
 
-export type DashboardTab = "OVERVIEW" | "TICKERS" | "NEWS" | "CHARTS" | "BRIEFING";
+export type DashboardTab = "OVERVIEW" | "TICKERS" | "NEWS" | "CHARTS" | "BRIEFING" | "ACCURACY";
 
 const TABS: { key: DashboardTab; label: string; shortcut: string }[] = [
   { key: "OVERVIEW", label: "OVERVIEW", shortcut: "1" },
@@ -8,6 +8,7 @@ const TABS: { key: DashboardTab; label: string; shortcut: string }[] = [
   { key: "NEWS", label: "NEWS", shortcut: "3" },
   { key: "CHARTS", label: "CHARTS", shortcut: "4" },
   { key: "BRIEFING", label: "BRIEFING", shortcut: "5" },
+  { key: "ACCURACY", label: "ACCURACY", shortcut: "6" },
 ];
 
 interface TabBarProps {
@@ -35,7 +36,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
           ))}
         </div>
         <div className="hidden lg:flex items-center gap-3 text-[9px] text-muted tracking-wider shrink-0 pl-4">
-          <span>[1-5] TABS</span>
+          <span>[1-6] TABS</span>
           <span>[C] COMPARE</span>
           <span>[CTRL+K] SEARCH</span>
         </div>

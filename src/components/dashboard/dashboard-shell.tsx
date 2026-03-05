@@ -11,6 +11,7 @@ import { TickerTable } from "./ticker-table";
 import { ArticlesFeed } from "./articles-feed";
 import { MarketSentimentChart } from "@/components/charts/market-sentiment-chart";
 import { MarketBriefing } from "./market-briefing";
+import { AccuracyDashboard } from "./accuracy-dashboard";
 import { IndexBar } from "./index-bar";
 import type { TickerSummary, Article, Analysis } from "@/lib/types";
 
@@ -54,6 +55,9 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
           break;
         case "5":
           handleTabChange("BRIEFING");
+          break;
+        case "6":
+          handleTabChange("ACCURACY");
           break;
         case "c":
         case "C":
@@ -100,6 +104,10 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
 
       {activeTab === "BRIEFING" && (
         <MarketBriefing />
+      )}
+
+      {activeTab === "ACCURACY" && (
+        <AccuracyDashboard />
       )}
     </>
   );
