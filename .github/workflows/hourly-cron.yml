@@ -10,7 +10,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger cron endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          curl -sf -X GET \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.DEPLOY_URL }}/api/cron/analyze"
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i of $MAX_RETRIES..."
+            HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$DEPLOY_URL/api/cron/analyze" \
+              --max-time 120)
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Success (HTTP $HTTP_CODE)"
+              cat /tmp/response.json
+              exit 0
+            fi
+            echo "Failed (HTTP $HTTP_CODE)"
+            cat /tmp/response.json 2>/dev/null || true
+            if [ "$i" -lt "$MAX_RETRIES" ]; then
+              echo "Retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            fi
+          done
+          echo "All $MAX_RETRIES attempts failed"
+          exit 1

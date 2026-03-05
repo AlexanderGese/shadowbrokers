@@ -5,7 +5,7 @@ import { checkAndTriggerAlerts } from "@/lib/alerts";
 import { checkPredictionAccuracy } from "@/lib/accuracy";
 import { generateBriefing } from "@/lib/briefing";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");

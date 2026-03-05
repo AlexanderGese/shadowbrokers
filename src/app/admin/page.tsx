@@ -767,35 +767,68 @@ export default function AdminPage() {
 
           {/* ANALYTICS TAB */}
           {tab === "analytics" && (
-            <div>
-              {analyticsLoading ? (
-                <div className="p-8 text-center text-xs text-muted">LOADING ANALYTICS...</div>
-              ) : analytics ? (
+            <div className="relative">
+              {/* Range filter bar */}
+              <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+                <span className="text-[10px] text-muted tracking-widest">
+                  {analyticsRange === "7d" ? "LAST 7 DAYS" : analyticsRange === "30d" ? "LAST 30 DAYS" : "ALL TIME"}
+                </span>
+                <div className="flex gap-1">
+                  {(["7d", "30d", "all"] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setAnalyticsRange(r)}
+                      className={`px-3 py-1 text-[10px] tracking-widest font-bold border transition-colors ${
+                        analyticsRange === r
+                          ? "text-accent border-accent bg-accent/5"
+                          : "text-muted border-card-border hover:text-foreground hover:border-foreground/20"
+                      }`}
+                    >
+                      {r.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {analyticsLoading && (
+                <div className="absolute inset-0 top-[37px] bg-background/60 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                  <span className="text-[10px] text-accent tracking-widest animate-pulse">LOADING...</span>
+                </div>
+              )}
+
+              {analytics ? (
                 <>
                   {/* Accuracy */}
                   <div className="border-b border-card-border">
-                    <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+                    <div className="px-4 py-2 border-b border-card-border">
                       <span className="text-[10px] text-muted tracking-widest">PREDICTION ACCURACY</span>
-                      <div className="flex gap-1">
-                        {(["7d", "30d", "all"] as const).map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => setAnalyticsRange(r)}
-                            className={`px-2 py-0.5 text-[10px] tracking-widest font-bold border transition-colors ${
-                              analyticsRange === r
-                                ? "text-accent border-accent"
-                                : "text-muted border-card-border hover:text-foreground"
-                            }`}
-                          >
-                            {r.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
                     </div>
-                    <div className="grid grid-cols-3">
-                      <StatBox label="ACCURACY" value={`${analytics.accuracy.percentCorrect}%`} color="text-accent" />
-                      <StatBox label="CORRECT" value={analytics.accuracy.correctCount.toString()} color="text-bullish" />
-                      <StatBox label="TOTAL" value={analytics.accuracy.totalPredictions.toString()} color="text-foreground" />
+                    <div className="flex items-center gap-6 px-6 py-4">
+                      {/* Accuracy ring */}
+                      <div className="relative flex-shrink-0">
+                        <svg width="72" height="72" viewBox="0 0 72 72">
+                          <circle cx="36" cy="36" r="30" fill="none" stroke="currentColor" strokeWidth="4" className="text-card-border" />
+                          <circle
+                            cx="36" cy="36" r="30" fill="none" strokeWidth="4"
+                            className="text-accent"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(analytics.accuracy.percentCorrect / 100) * 188.5} 188.5`}
+                            transform="rotate(-90 36 36)"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-sm font-bold text-accent">{analytics.accuracy.percentCorrect}%</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px]">
+                        <span className="text-muted tracking-widest">CORRECT</span>
+                        <span className="text-bullish font-bold">{analytics.accuracy.correctCount}</span>
+                        <span className="text-muted tracking-widest">INCORRECT</span>
+                        <span className="text-bearish font-bold">{analytics.accuracy.totalPredictions - analytics.accuracy.correctCount}</span>
+                        <span className="text-muted tracking-widest">TOTAL</span>
+                        <span className="text-foreground font-bold">{analytics.accuracy.totalPredictions}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -803,44 +836,57 @@ export default function AdminPage() {
                   <div className="border-b border-card-border">
                     <div className="px-4 py-2 border-b border-card-border">
                       <span className="text-[10px] text-muted tracking-widest">
-                        ARTICLES BY SOURCE ({analytics.sourceBreakdown.length})
+                        ARTICLES BY SOURCE ({analytics.sourceBreakdown.reduce((sum, s) => sum + s.count, 0)} TOTAL)
                       </span>
                     </div>
-                    <div className="divide-y divide-card-border">
-                      {analytics.sourceBreakdown.map((s) => (
-                        <div key={s.source} className="px-6 py-2 flex items-center justify-between text-[10px]">
-                          <span className="text-foreground uppercase font-bold">{s.source}</span>
-                          <div className="flex items-center gap-3">
-                            <div className="w-32 h-1 bg-card-border rounded overflow-hidden">
-                              <div
-                                className="h-full bg-accent rounded"
-                                style={{
-                                  width: `${Math.min(100, (s.count / (analytics.sourceBreakdown[0]?.count || 1)) * 100)}%`,
-                                }}
-                              />
+                    {analytics.sourceBreakdown.length > 0 ? (
+                      <div className="divide-y divide-card-border">
+                        {analytics.sourceBreakdown.map((s) => (
+                          <div key={s.source} className="px-6 py-2 flex items-center justify-between text-[10px] hover:bg-card-border/10 transition-colors">
+                            <span className="text-foreground uppercase font-bold w-32">{s.source}</span>
+                            <div className="flex items-center gap-3 flex-1 justify-end">
+                              <div className="w-40 h-1.5 bg-card-border rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-accent rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${Math.min(100, (s.count / (analytics.sourceBreakdown[0]?.count || 1)) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className="text-accent w-12 text-right font-bold">{s.count}</span>
                             </div>
-                            <span className="text-accent w-12 text-right">{s.count}</span>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-6 py-4 text-[10px] text-muted">No articles in this time range.</div>
+                    )}
                   </div>
 
                   {/* Top Tickers */}
                   <div className="border-b border-card-border">
                     <div className="px-4 py-2 border-b border-card-border">
-                      <span className="text-[10px] text-muted tracking-widest">TOP TICKERS BY ARTICLES</span>
+                      <span className="text-[10px] text-muted tracking-widest">
+                        TOP TICKERS ({analytics.topTickers.length})
+                      </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-                      {analytics.topTickers.map((t) => (
-                        <div key={t.ticker} className="border-r border-b border-card-border px-4 py-2">
-                          <Link href={`/ticker/${t.ticker}`} className="text-xs font-bold text-foreground hover:text-accent">
-                            {t.ticker}
-                          </Link>
-                          <div className="text-[10px] text-muted">{t.numArticles} articles</div>
-                        </div>
-                      ))}
-                    </div>
+                    {analytics.topTickers.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+                        {analytics.topTickers.map((t, i) => (
+                          <div key={t.ticker} className="border-r border-b border-card-border px-4 py-2 hover:bg-card-border/10 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] text-muted">{i + 1}.</span>
+                              <Link href={`/ticker/${t.ticker}`} className="text-xs font-bold text-foreground hover:text-accent transition-colors">
+                                {t.ticker}
+                              </Link>
+                            </div>
+                            <div className="text-[10px] text-muted ml-4">{t.numArticles} analyses</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-6 py-4 text-[10px] text-muted">No ticker data in this time range.</div>
+                    )}
                   </div>
 
                   {/* Sentiment Distribution */}
@@ -848,29 +894,36 @@ export default function AdminPage() {
                     <div className="px-4 py-2 border-b border-card-border">
                       <span className="text-[10px] text-muted tracking-widest">SENTIMENT DISTRIBUTION</span>
                     </div>
-                    <div className="grid grid-cols-3">
-                      <StatBox label="BULLISH" value={analytics.sentimentDist.bullish.toString()} color="text-bullish" />
-                      <StatBox label="BEARISH" value={analytics.sentimentDist.bearish.toString()} color="text-bearish" />
-                      <StatBox label="NEUTRAL" value={analytics.sentimentDist.neutral.toString()} color="text-neutral" />
-                    </div>
                     {(() => {
                       const total = analytics.sentimentDist.bullish + analytics.sentimentDist.bearish + analytics.sentimentDist.neutral;
-                      if (total === 0) return null;
+                      if (total === 0) {
+                        return <div className="px-6 py-4 text-[10px] text-muted">No sentiment data in this time range.</div>;
+                      }
+                      const bullPct = Math.round((analytics.sentimentDist.bullish / total) * 100);
+                      const bearPct = Math.round((analytics.sentimentDist.bearish / total) * 100);
+                      const neutPct = 100 - bullPct - bearPct;
                       return (
-                        <div className="px-6 py-3">
-                          <div className="flex h-2 rounded overflow-hidden">
-                            <div className="bg-bullish" style={{ width: `${(analytics.sentimentDist.bullish / total) * 100}%` }} />
-                            <div className="bg-neutral" style={{ width: `${(analytics.sentimentDist.neutral / total) * 100}%` }} />
-                            <div className="bg-bearish" style={{ width: `${(analytics.sentimentDist.bearish / total) * 100}%` }} />
+                        <>
+                          <div className="grid grid-cols-3">
+                            <StatBox label="BULLISH" value={`${analytics.sentimentDist.bullish} (${bullPct}%)`} color="text-bullish" />
+                            <StatBox label="BEARISH" value={`${analytics.sentimentDist.bearish} (${bearPct}%)`} color="text-bearish" />
+                            <StatBox label="NEUTRAL" value={`${analytics.sentimentDist.neutral} (${neutPct}%)`} color="text-neutral" />
                           </div>
-                        </div>
+                          <div className="px-6 py-3">
+                            <div className="flex h-2.5 rounded-full overflow-hidden">
+                              <div className="bg-bullish transition-all duration-300" style={{ width: `${bullPct}%` }} />
+                              <div className="bg-neutral transition-all duration-300" style={{ width: `${neutPct}%` }} />
+                              <div className="bg-bearish transition-all duration-300" style={{ width: `${bearPct}%` }} />
+                            </div>
+                          </div>
+                        </>
                       );
                     })()}
                   </div>
                 </>
-              ) : (
+              ) : !analyticsLoading ? (
                 <div className="p-8 text-center text-xs text-muted">No analytics data available.</div>
-              )}
+              ) : null}
             </div>
           )}
         </>
