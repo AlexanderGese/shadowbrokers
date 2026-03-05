@@ -56,6 +56,21 @@ const sourceColors: Record<string, string> = {
   marketwatch: "text-bearish",
   ft: "text-[#FCD0B1]",
   ap: "text-foreground",
+  bloomberg: "text-[#FF6600]",
+  wsj: "text-[#0080C6]",
+  barrons: "text-[#C9A96E]",
+  investing: "text-[#FF8C00]",
+  seekingalpha: "text-[#F58220]",
+  benzinga: "text-[#00BFFF]",
+  techcrunch: "text-bullish",
+  verge: "text-[#E54D69]",
+  arstechnica: "text-[#FF4500]",
+  fed: "text-accent",
+  ecb: "text-accent",
+  economist: "text-bearish",
+  fortune: "text-[#E8112D]",
+  coindesk: "text-neutral",
+  cointelegraph: "text-bullish",
 };
 
 function ArticleRow({ article }: { article: ArticleWithAnalyses }) {

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { createServerClient } from "./supabase/server";
 import { sendDiscordBriefing, sendDiscordDanger } from "./discord";
+import { notifyBriefingGenerated, notifyDangerSignal } from "./discord-webhooks";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -111,7 +112,7 @@ export async function generateBriefing(): Promise<BriefingResult | null> {
     market_bias: result.market_bias,
   });
 
-  // Send Discord notifications
+  // Send Discord notifications (global webhook)
   try {
     await sendDiscordBriefing(
       result.summary,
@@ -124,6 +125,20 @@ export async function generateBriefing(): Promise<BriefingResult | null> {
     }
   } catch {
     // Don't block pipeline on Discord errors
+  }
+
+  // Send per-user Discord webhooks
+  try {
+    await notifyBriefingGenerated(
+      result.summary,
+      result.market_bias,
+      result.danger_tickers.map((d) => d.ticker)
+    );
+    for (const dt of result.danger_tickers) {
+      await notifyDangerSignal(dt.ticker, dt.reasoning, dt.confidence);
+    }
+  } catch {
+    // Don't block pipeline on user webhook errors
   }
 
   return result;

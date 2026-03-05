@@ -1,5 +1,6 @@
 import { createServerClient } from "./supabase/server";
 import { sendDiscordAlert } from "./discord";
+import { notifyAlertTriggered } from "./discord-webhooks";
 
 export async function checkAndTriggerAlerts(): Promise<number> {
   const supabase = createServerClient();
@@ -111,11 +112,16 @@ export async function checkAndTriggerAlerts(): Promise<number> {
       metadata: { ticker: alert.ticker, sentiment: currentSentiment },
     });
 
-    // Send Discord alert
+    // Send Discord alerts (global + per-user webhooks)
     try {
       await sendDiscordAlert(alert.ticker, currentSentiment, currentConfidence, alert.condition, notifBody);
     } catch {
       // Don't block pipeline on Discord errors
+    }
+    try {
+      await notifyAlertTriggered(alert.user_id, alert.ticker, alert.condition, notifBody);
+    } catch {
+      // Don't block pipeline on user webhook errors
     }
 
     // Update last triggered

@@ -55,7 +55,7 @@ const DEMO_TICKERS = [
 const TERMINAL_LINES = [
   { text: "$ shadowbrokers --init", color: "text-accent" },
   { text: "[SYS] Booting financial intelligence engine...", color: "text-muted" },
-  { text: "[RSS] Reuters, CNBC, Yahoo, MarketWatch, FT, AP", color: "text-muted" },
+  { text: "[RSS] Reuters, CNBC, Bloomberg, WSJ, MarketWatch + 18 more", color: "text-muted" },
   { text: "[AI] Loading GPT-4o analysis pipeline...", color: "text-muted" },
   { text: "[OK] 47 tickers classified", color: "text-bullish" },
   { text: "[OK] Prediction engine online", color: "text-bullish" },
@@ -63,7 +63,7 @@ const TERMINAL_LINES = [
 ];
 
 const PIPELINE_STEPS = [
-  { label: "INGEST", detail: "6 RSS feeds scraped every hour", icon: "01" },
+  { label: "INGEST", detail: "23 RSS feeds scraped every hour", icon: "01" },
   { label: "ANALYZE", detail: "GPT-4o classifies each article", icon: "02" },
   { label: "AGGREGATE", detail: "Signals merged per ticker", icon: "03" },
   { label: "PREDICT", detail: "Direction & magnitude scored", icon: "04" },
@@ -195,7 +195,7 @@ export default function LandingPage() {
               AI-powered financial intelligence that reads the market before you do.
             </p>
             <p className="text-[10px] md:text-xs text-muted/60 tracking-[0.2em] mb-12 fade-in-up fade-in-up-delay-3">
-              6 RSS FEEDS &middot; GPT-4O ANALYSIS &middot; REAL-TIME PREDICTIONS
+              23 RSS FEEDS &middot; GPT-4O ANALYSIS &middot; REAL-TIME PREDICTIONS
             </p>
 
             {/* Hero CTA - main signup */}
@@ -309,8 +309,8 @@ export default function LandingPage() {
       <section className="border-b border-card-border">
         <div className="grid grid-cols-2 md:grid-cols-4">
           {[
-            { label: "NEWS SOURCES", value: "6", sub: "RSS FEEDS" },
-            { label: "DAILY ARTICLES", value: "50+", sub: "ANALYZED" },
+            { label: "NEWS SOURCES", value: "23", sub: "RSS FEEDS" },
+            { label: "DAILY ARTICLES", value: "200+", sub: "ANALYZED" },
             { label: "AI ENGINE", value: "GPT-4O", sub: "OPENAI" },
             { label: "PRICE DATA", value: "LIVE", sub: "YAHOO FINANCE" },
           ].map((stat, i) => (
@@ -458,7 +458,7 @@ export default function LandingPage() {
             <div>
               <div className="text-2xl md:text-3xl font-bold text-accent mb-1">6</div>
               <div className="text-[10px] text-muted tracking-widest">GLOBAL NEWS SOURCES</div>
-              <div className="text-[9px] text-muted/50 mt-1">Reuters, CNBC, Yahoo, MarketWatch, FT, AP</div>
+              <div className="text-[9px] text-muted/50 mt-1">Reuters, CNBC, Bloomberg, WSJ, MarketWatch + 18 more</div>
             </div>
             <div>
               <div className="text-2xl md:text-3xl font-bold text-bullish mb-1">24/7</div>

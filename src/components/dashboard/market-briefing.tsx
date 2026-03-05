@@ -169,7 +169,10 @@ export function MarketBriefing() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] text-muted">
-                        {new Date(item.generated_at).toLocaleDateString()}
+                        {new Date(item.generated_at).toLocaleString("en-US", {
+                          month: "short", day: "numeric", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
                       </span>
                       <span className={`text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider ${bColor}`}>
                         {item.market_bias}

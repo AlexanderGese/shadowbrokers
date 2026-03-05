@@ -4,6 +4,8 @@ import { analyzeAndStore, refreshTickerSummaries } from "@/lib/openai";
 import { checkAndTriggerAlerts } from "@/lib/alerts";
 import { checkPredictionAccuracy } from "@/lib/accuracy";
 import { generateBriefing } from "@/lib/briefing";
+import { notifyHighConfidencePrediction } from "@/lib/discord-webhooks";
+import { createServerClient } from "@/lib/supabase/server";
 
 export const maxDuration = 120;
 
@@ -17,6 +19,23 @@ export async function GET(request: NextRequest) {
     const rssResult = await fetchAndSaveArticles();
     const analysisResult = await analyzeAndStore();
     await refreshTickerSummaries();
+
+    // Notify high-confidence predictions via user webhooks
+    try {
+      const supabase = createServerClient();
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: highConf } = await supabase
+        .from("analyses")
+        .select("ticker, predicted_direction, confidence, reasoning")
+        .gte("created_at", fiveMinAgo)
+        .gte("confidence", 0.8)
+        .neq("predicted_direction", "flat");
+      for (const p of highConf || []) {
+        await notifyHighConfidencePrediction(p.ticker, p.predicted_direction, p.confidence, p.reasoning);
+      }
+    } catch (e) {
+      console.error("[CRON] High-confidence notification error:", e);
+    }
 
     // Check prediction accuracy for recent analyses
     let accuracyChecked = 0;

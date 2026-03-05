@@ -47,11 +47,12 @@ export default async function DashboardPage() {
             SHADOWBROKERS v6.0 | AI-POWERED MARKET INTELLIGENCE
           </span>
           <div className="flex items-center gap-3">
+            <a href="/news" className="text-[10px] text-muted hover:text-accent transition-colors">NEWS</a>
             <a href="/compare" className="text-[10px] text-muted hover:text-accent transition-colors">COMPARE</a>
             <a href="/portfolio" className="text-[10px] text-muted hover:text-accent transition-colors">PORTFOLIO</a>
-            <a href="/alerts" className="text-[10px] text-muted hover:text-accent transition-colors">ALERTS</a>
+            <a href="/settings" className="text-[10px] text-muted hover:text-accent transition-colors">SETTINGS</a>
             <span className="text-[10px] text-muted">
-              HOURLY ANALYSIS | GPT-4O-MINI
+              HOURLY ANALYSIS | GPT-4O
             </span>
           </div>
         </div>

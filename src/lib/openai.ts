@@ -4,25 +4,43 @@ import type { Article } from "./types";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are a senior financial analyst at a top-tier quantitative hedge fund. Analyze news articles and determine their impact on specific stocks and ETFs.
+const SYSTEM_PROMPT = `You are a senior financial analyst at a top-tier quantitative hedge fund specializing in short-term directional prediction. Your job is to predict whether a stock/ETF will move UP, DOWN, or stay FLAT over the next 1-3 trading days based on the news article.
 
-For EVERY ticker you identify, you MUST provide:
-- name: Full official company or fund name (e.g. "Apple Inc.", "SPDR S&P 500 ETF Trust")
-- description: One clear sentence about what this company does or what this ETF tracks (e.g. "Designs and sells consumer electronics, software, and services including iPhone, Mac, and Apple Watch" or "Tracks the S&P 500 index, providing broad exposure to large-cap US equities")
+CRITICAL RULES FOR DIRECTION PREDICTION:
+- "up" means the price will increase more than 1% in the next 1-3 days
+- "down" means the price will decrease more than 1% in the next 1-3 days
+- "flat" means the price will move less than 1% in either direction
+- MOST news has NO significant short-term price impact. Default to "flat" unless the signal is strong.
+- Only predict "up" or "down" when the article describes a MATERIAL catalyst: earnings surprise, M&A, regulatory action, major product launch/failure, significant macro shift, sector-wide disruption.
+- Routine news, opinion pieces, market commentary, and recycled stories should almost always be "flat"
+- When in doubt, predict "flat" — being conservative IS being accurate
+
+CONFIDENCE CALIBRATION:
+- 0.8-1.0: Direct material news about the specific company (earnings, FDA approval, acquisition)
+- 0.6-0.8: Strong sector catalyst clearly impacting the ticker
+- 0.4-0.6: Indirect or speculative connection
+- 0.0-0.4: Tangential mention, low relevance — SKIP these, do not include tickers below 0.5 confidence
+
+SENTIMENT vs DIRECTION:
+- Sentiment reflects the TONE of the article (bullish/bearish/neutral)
+- Direction reflects your ACTUAL PREDICTION of price movement
+- These can differ: a bullish article about a company might not move the stock if already priced in (sentiment=bullish, direction=flat)
+
+For EVERY ticker you identify (confidence >= 0.5 only), provide:
+- name: Full official company or fund name
+- description: One sentence about what the company does (about the COMPANY, not the news)
 - sector: One of: Technology, Energy, Financials, Healthcare, Consumer Discretionary, Consumer Staples, Industrials, Materials, Real Estate, Utilities, Communication Services, Broad Market, Commodities, Fixed Income, Cryptocurrency
-- topic: The specific news theme driving this signal in 2-5 words (e.g. "Iran oil supply disruption", "AI chip demand surge", "Fed rate cut expectations", "Earnings beat guidance")
+- topic: The specific news theme in 2-5 words
+- predicted_magnitude: "low" = <1% move, "medium" = 1-3%, "high" = >3%
 
 Rules:
 - Only identify tickers DIRECTLY mentioned or clearly implied by the article
+- Do NOT include tickers with confidence below 0.5
 - For broad market events, use relevant ETFs (SPY, QQQ, DIA, IWM, XLF, XLE, XLK, etc.)
-- Confidence: 0.0 to 1.0, reflecting how directly the article impacts the ticker
-- Reasoning: 1-2 concise sentences explaining the connection
-- If an article has no financial market relevance, return empty tickers array
 - Use valid US market ticker symbols (NYSE, NASDAQ)
 - Correctly distinguish stocks vs ETFs in asset_type
-- predicted_magnitude: "low" = <1% move, "medium" = 1-3%, "high" = >3%
-- description must be about the COMPANY/ETF itself, not about the news
-- topic must be about the NEWS THEME, not about the company`;
+- If an article has no financial market relevance, return empty tickers array
+- Reasoning: 1-2 concise sentences explaining your directional prediction`;
 
 const BATCH_SIZE = 8;
 
@@ -59,7 +77,7 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
     .select("*")
     .eq("analyzed", false)
     .order("published_at", { ascending: false })
-    .limit(15);
+    .limit(30);
 
   if (error || !articles?.length) {
     return { analyzed: 0, insights: 0 };
@@ -105,8 +123,8 @@ async function analyzeBatch(articles: Article[]) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
+      model: "gpt-4o",
+      temperature: 0.1,
       max_tokens: 8192,
       response_format: {
         type: "json_schema",
@@ -158,7 +176,7 @@ async function analyzeBatch(articles: Article[]) {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Analyze these ${articles.length} articles for stock/ETF impact. For each ticker provide the full company description, sector, and the specific news topic driving the signal:\n\n${articleList}\n\nReturn structured JSON with article_index and tickers array for each.`,
+          content: `Analyze these ${articles.length} articles for stock/ETF impact. Remember: most news is "flat" — only predict directional moves for MATERIAL catalysts. Only include tickers with confidence >= 0.5.\n\n${articleList}\n\nReturn structured JSON with article_index and tickers array for each.`,
         },
       ],
     });
@@ -184,13 +202,17 @@ async function analyzeBatch(articles: Article[]) {
       if (!article) continue;
 
       for (const t of analysis.tickers) {
+        const confidence = Math.max(0, Math.min(1, t.confidence));
+        // Skip low-confidence predictions — they hurt accuracy
+        if (confidence < 0.5) continue;
+
         const ticker = t.ticker.toUpperCase();
         results.push({
           article_id: article.id,
           ticker,
           asset_type: t.asset_type,
           sentiment: t.sentiment,
-          confidence: Math.max(0, Math.min(1, t.confidence)),
+          confidence,
           reasoning: t.reasoning,
           predicted_direction: t.predicted_direction,
           predicted_magnitude: t.predicted_magnitude,
