@@ -71,9 +71,12 @@ export default function LoginPage() {
         >
           {loading ? "AUTHENTICATING..." : "LOGIN"}
         </button>
-        <div className="text-center">
-          <a href="/" className="text-[10px] text-muted hover:text-accent transition-colors">
-            ACCESS RESTRICTED — <span className="text-accent">JOIN WAITLIST</span>
+        <div className="text-center space-y-1">
+          <a href="/signup" className="block text-[10px] text-muted hover:text-accent transition-colors tracking-widest">
+            NO ACCOUNT? <span className="text-accent">SIGN UP</span>
+          </a>
+          <a href="/" className="block text-[10px] text-muted/50 hover:text-muted transition-colors">
+            ALPHA ACCESS ONLY
           </a>
         </div>
       </form>

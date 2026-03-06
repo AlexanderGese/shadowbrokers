@@ -21,6 +21,13 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // Profile state
+  const [displayName, setDisplayName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileCreated, setProfileCreated] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   const [webhook, setWebhook] = useState<WebhookConfig>({
     webhook_url: "",
     notify_alerts: true,
@@ -33,8 +40,46 @@ export default function SettingsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
+    loadProfile();
     loadWebhook();
   }, [user, authLoading, router]);
+
+  async function loadProfile() {
+    try {
+      const res = await fetch("/api/profile");
+      const data = await res.json();
+      if (data.email) {
+        setDisplayName(data.display_name || "");
+        setProfileEmail(data.email);
+        setProfileCreated(data.created_at || "");
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setProfileMessage(null);
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: displayName }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfileMessage({ type: "ok", text: "Username updated" });
+      } else {
+        setProfileMessage({ type: "err", text: data.error || "Failed to update" });
+      }
+    } catch {
+      setProfileMessage({ type: "err", text: "Network error" });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function loadWebhook() {
     try {
@@ -137,7 +182,87 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+        {/* Profile Section */}
+        <div className="border border-card-border bg-card-bg">
+          <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+            <span className="text-[10px] text-muted tracking-widest">PROFILE</span>
+            <span className="text-[9px] px-2 py-0.5 bg-bullish/10 text-bullish border border-bullish/20">ALPHA</span>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 border border-accent/30 bg-accent/10 flex items-center justify-center">
+                <span className="text-sm text-accent font-bold">
+                  {(displayName || profileEmail || "?")[0].toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-foreground tracking-wider">
+                  {displayName || profileEmail?.split("@")[0] || "Agent"}
+                </div>
+                <div className="text-[9px] text-muted">{profileEmail}</div>
+              </div>
+              {profileCreated && (
+                <div className="ml-auto text-right">
+                  <div className="text-[9px] text-muted">JOINED</div>
+                  <div className="text-[10px] text-foreground">
+                    {new Date(profileCreated).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={saveProfile} className="space-y-4">
+              <div>
+                <label className="text-[10px] text-muted tracking-widest block mb-1">USERNAME</label>
+                <div className="flex items-center border border-card-border bg-background">
+                  <span className="text-[10px] text-accent px-3 shrink-0">@</span>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="your_username"
+                    maxLength={32}
+                    required
+                    className="w-full bg-transparent text-xs text-foreground py-2.5 pr-3 focus:outline-none placeholder:text-muted/40"
+                  />
+                </div>
+                <div className="text-[9px] text-muted mt-1">
+                  This is how you appear across the platform. Max 32 characters.
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-muted tracking-widest block mb-1">EMAIL</label>
+                <div className="flex items-center border border-card-border bg-background/50">
+                  <span className="text-[10px] text-muted px-3 shrink-0">$</span>
+                  <span className="text-xs text-muted py-2.5 pr-3">{profileEmail}</span>
+                </div>
+                <div className="text-[9px] text-muted mt-1">
+                  Email cannot be changed during alpha.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="text-[10px] px-5 py-2 bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 transition-colors tracking-widest disabled:opacity-50"
+                >
+                  {savingProfile ? "SAVING..." : "UPDATE PROFILE"}
+                </button>
+              </div>
+
+              {profileMessage && (
+                <div className={`text-[10px] ${profileMessage.type === "ok" ? "text-bullish" : "text-bearish"}`}>
+                  [{profileMessage.type === "ok" ? "OK" : "ERR"}] {profileMessage.text}
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+
         {/* Discord Webhook Section */}
         <div className="border border-card-border bg-card-bg">
           <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
