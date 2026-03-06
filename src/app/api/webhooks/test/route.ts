@@ -23,6 +23,8 @@ export async function POST() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        username: "SHADOWBROKERS",
+        avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
         embeds: [{
           title: "SHADOWBROKERS — Test Notification",
           description: "Your Discord webhook is working correctly. You'll receive alerts, briefings, and danger signals here.",
@@ -31,7 +33,7 @@ export async function POST() {
             { name: "Status", value: "CONNECTED", inline: true },
             { name: "Plan", value: "ULTRA", inline: true },
           ],
-          footer: { text: "ShadowBrokers v5.0 | AI-Powered Market Intelligence" },
+          footer: { text: "SHADOWBROKERS v6.0 | AI-Powered Market Intelligence" },
           timestamp: new Date().toISOString(),
         }],
       }),

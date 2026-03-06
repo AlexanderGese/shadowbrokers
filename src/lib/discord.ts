@@ -16,7 +16,8 @@ async function sendWebhook(embeds: DiscordEmbed[]): Promise<void> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username: "ShadowBrokers",
+      username: "SHADOWBROKERS",
+      avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
       embeds,
     }),
   });

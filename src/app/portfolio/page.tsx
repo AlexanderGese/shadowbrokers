@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
+import { PortfolioChart } from "@/components/charts/portfolio-chart";
+import { SentimentSparkline } from "@/components/charts/sentiment-sparkline";
 import type { PriceData } from "@/lib/types";
 
 interface Position {
@@ -12,6 +14,7 @@ interface Position {
   avg_price: number;
   price?: PriceData;
   sentiment?: string;
+  sparkline?: number[];
 }
 
 export default function PortfolioPage() {
@@ -49,13 +52,30 @@ export default function PortfolioPage() {
           sentMap.set(t.ticker, t.overall_sentiment);
         }
 
-        setPositions(
-          pos.map((p: Position) => ({
-            ...p,
-            price: priceData.prices?.[p.ticker],
-            sentiment: sentMap.get(p.ticker),
-          }))
-        );
+        const enriched = pos.map((p: Position) => ({
+          ...p,
+          price: priceData.prices?.[p.ticker],
+          sentiment: sentMap.get(p.ticker),
+        }));
+        setPositions(enriched);
+
+        // Fetch 7d sparkline data for each position
+        Promise.all(
+          tickers.map((t: string) =>
+            fetch(`/api/charts/price-overlay?ticker=${t}&days=7`)
+              .then((r) => r.json())
+              .then((d) => ({
+                ticker: t,
+                points: (d.candles || []).map((c: { close: number }) => c.close),
+              }))
+              .catch(() => ({ ticker: t, points: [] }))
+          )
+        ).then((sparklines) => {
+          const sparkMap = new Map(sparklines.map((s) => [s.ticker, s.points]));
+          setPositions((prev) =>
+            prev.map((p) => ({ ...p, sparkline: sparkMap.get(p.ticker) || [] }))
+          );
+        });
       } else {
         setPositions([]);
       }
@@ -163,6 +183,13 @@ export default function PortfolioPage() {
         </div>
       </div>
 
+      {/* Portfolio Chart */}
+      {positions.length > 0 && (
+        <div className="px-6 py-4">
+          <PortfolioChart />
+        </div>
+      )}
+
       {/* Add Position Form */}
       {showForm && (
         <div className="border-b border-card-border bg-card-bg px-6 py-4">
@@ -230,9 +257,10 @@ export default function PortfolioPage() {
                   <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest">SHARES</th>
                   <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest">AVG COST</th>
                   <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest">PRICE</th>
-                  <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest">VALUE</th>
+                  <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest hidden md:table-cell">VALUE</th>
                   <th className="text-right px-3 py-2 text-[10px] text-muted tracking-widest">P&L</th>
-                  <th className="text-center px-3 py-2 text-[10px] text-muted tracking-widest">SIGNAL</th>
+                  <th className="text-center px-3 py-2 text-[10px] text-muted tracking-widest hidden md:table-cell">SIGNAL</th>
+                  <th className="text-center px-3 py-2 text-[10px] text-muted tracking-widest">TREND</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -261,12 +289,24 @@ export default function PortfolioPage() {
                           </span>
                         )}
                       </td>
-                      <td className="text-right px-3 py-2 text-foreground">${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="text-right px-3 py-2 text-foreground hidden md:table-cell">${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className={`text-right px-3 py-2 ${pnl >= 0 ? "text-bullish" : "text-bearish"}`}>
                         {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%)
                       </td>
-                      <td className={`text-center px-3 py-2 ${sentColor} uppercase text-[10px]`}>
+                      <td className={`text-center px-3 py-2 ${sentColor} uppercase text-[10px] hidden md:table-cell`}>
                         {p.sentiment || "-"}
+                      </td>
+                      <td className="text-center px-3 py-2">
+                        {p.sparkline && p.sparkline.length >= 2 ? (
+                          <SentimentSparkline
+                            points={p.sparkline}
+                            width={50}
+                            height={16}
+                            color={pnl >= 0 ? "#00ff88" : "#ff4444"}
+                          />
+                        ) : (
+                          <span className="text-[10px] text-muted">-</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <button

@@ -34,10 +34,10 @@ const FEATURES = [
     stat: "6 TRIGGERS",
   },
   {
-    title: "PREDICTION ACCURACY",
-    description: "Full transparency. We track every AI prediction against actual price movement. See accuracy by sector, ticker, and time range.",
-    icon: "%",
-    stat: "VERIFIED",
+    title: "EARNINGS CALENDAR",
+    description: "Track upcoming earnings dates, EPS estimates, and historical surprises for all monitored tickers. Never miss an earnings event.",
+    icon: "$",
+    stat: "TRACKED",
   },
 ];
 

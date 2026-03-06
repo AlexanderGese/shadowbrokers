@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
+import { PushToggle } from "@/components/settings/push-toggle";
 
 interface WebhookConfig {
   webhook_url: string;
@@ -260,6 +261,21 @@ export default function SettingsPage() {
                 </div>
               )}
             </form>
+          </div>
+        </div>
+
+        {/* Push Notifications Section */}
+        <div className="border border-card-border bg-card-bg">
+          <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+            <span className="text-[10px] text-muted tracking-widest">PUSH NOTIFICATIONS</span>
+            <span className="text-[9px] px-2 py-0.5 bg-bullish/10 text-bullish border border-bullish/20">PWA</span>
+          </div>
+          <div className="p-6">
+            <p className="text-[10px] text-muted leading-relaxed mb-4">
+              Receive real-time push notifications for alerts, danger signals, and daily briefings directly on this device.
+              Install the app as a PWA for the best experience.
+            </p>
+            <PushToggle />
           </div>
         </div>
 

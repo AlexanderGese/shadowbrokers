@@ -197,8 +197,8 @@ export const FAQ_ITEMS: FAQItem[] = [
     answer: "We will accept all major credit cards and debit cards via Stripe. Additional payment methods may be added in the future.",
   },
   {
-    question: "How accurate is the AI analysis?",
-    answer: "Our AI processes news from 6+ major financial sources and classifies sentiment with tracked accuracy. Prediction tracking is available in the dashboard so you can evaluate performance yourself.",
+    question: "How does the AI analysis work?",
+    answer: "Our AI processes news from 6+ major financial sources and classifies sentiment using GPT-4o analysis. Results are available across the dashboard with confidence scores and detailed reasoning.",
   },
   {
     question: "Can I cancel anytime?",

@@ -1,6 +1,7 @@
 import { createServerClient } from "./supabase/server";
 import { sendDiscordAlert } from "./discord";
 import { notifyAlertTriggered } from "./discord-webhooks";
+import { sendPushToUser } from "./web-push";
 
 export async function checkAndTriggerAlerts(): Promise<number> {
   const supabase = createServerClient();
@@ -122,6 +123,18 @@ export async function checkAndTriggerAlerts(): Promise<number> {
       await notifyAlertTriggered(alert.user_id, alert.ticker, alert.condition, notifBody);
     } catch {
       // Don't block pipeline on user webhook errors
+    }
+
+    // Send push notification
+    try {
+      await sendPushToUser(alert.user_id, {
+        title: notifTitle,
+        body: notifBody,
+        tag: `alert-${alert.ticker}`,
+        url: `/ticker/${alert.ticker}`,
+      });
+    } catch {
+      // Don't block pipeline on push errors
     }
 
     // Update last triggered

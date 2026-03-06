@@ -82,6 +82,38 @@ export async function getPrices(
   return results;
 }
 
+export async function getHistoricalPrices(
+  ticker: string,
+  days: number = 30
+): Promise<{ date: string; open: number; high: number; low: number; close: number; volume: number }[]> {
+  try {
+    const endDate = new Date();
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await yahooFinance.chart(ticker, {
+      period1: startDate.toISOString().slice(0, 10),
+      period2: endDate.toISOString().slice(0, 10),
+      interval: "1d",
+    });
+
+    const quotes = result?.quotes || [];
+    return quotes
+      .filter((q: { date: Date | null }) => q.date)
+      .map((q: { date: Date; open: number; high: number; low: number; close: number; volume: number }) => ({
+        date: new Date(q.date).toISOString().slice(0, 10),
+        open: Math.round((q.open || 0) * 100) / 100,
+        high: Math.round((q.high || 0) * 100) / 100,
+        low: Math.round((q.low || 0) * 100) / 100,
+        close: Math.round((q.close || 0) * 100) / 100,
+        volume: q.volume || 0,
+      }));
+  } catch (error) {
+    console.error(`[Yahoo] Failed to fetch historical for ${ticker}:`, error);
+    return [];
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapCacheToPrice(cached: any): PriceData {
   return {

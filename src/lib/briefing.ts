@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { createServerClient } from "./supabase/server";
 import { sendDiscordBriefing, sendDiscordDanger } from "./discord";
 import { notifyBriefingGenerated, notifyDangerSignal } from "./discord-webhooks";
+import { sendPushToAllUsers } from "./web-push";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -139,6 +140,18 @@ export async function generateBriefing(): Promise<BriefingResult | null> {
     }
   } catch {
     // Don't block pipeline on user webhook errors
+  }
+
+  // Send push notifications to all subscribed users
+  try {
+    await sendPushToAllUsers({
+      title: `Market Briefing: ${result.market_bias.toUpperCase()}`,
+      body: result.summary.slice(0, 150),
+      tag: "briefing",
+      url: "/dashboard",
+    });
+  } catch {
+    // Don't block pipeline on push errors
   }
 
   return result;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { SentimentTrend } from "@/components/charts/sentiment-trend";
+import { ComparisonChart } from "@/components/charts/comparison-chart";
 import type { PriceData, TickerSummary } from "@/lib/types";
 
 interface CompareData {
@@ -186,7 +187,10 @@ export default function ComparePage() {
             })}
           </div>
 
-          {/* Charts */}
+          {/* Comparison Chart */}
+          <ComparisonChart tickers={tickers} />
+
+          {/* Per-Ticker Sentiment Charts */}
           <div className={`grid grid-cols-1 ${GRID_COLS[Math.min(tickers.length, 4)]} gap-px bg-card-border`}>
             {tickers.map((t) => (
               <div key={t} className="bg-card-bg p-4">

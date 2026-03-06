@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { WatchlistSection } from "@/components/dashboard/watchlist-section";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ export default async function DashboardPage() {
         articles={articles as never}
         totalArticleCount={totalArticleCount}
       />
+
+      <ChatWidget />
 
       {/* Footer */}
       <footer className="border-t border-card-border px-4 py-2">

@@ -311,7 +311,7 @@ export default function AdminPage() {
         if (label === "analysis") {
           setActionStatus(`Analysis complete: ${data.rss?.fetched || 0} articles, ${data.analysis?.insights || 0} insights`);
         } else if (label === "pipeline") {
-          setActionStatus(`Pipeline complete: ${data.rss?.fetched || 0} articles, ${data.analysis?.insights || 0} insights, ${data.accuracyChecked} accuracy checks, ${data.alertsTriggered} alerts`);
+          setActionStatus(`Pipeline complete: ${data.rss?.fetched || 0} articles, ${data.analysis?.insights || 0} insights, ${data.alertsTriggered} alerts`);
         } else if (label === "cache") {
           setActionStatus(`Cache cleared: ${data.cleared} entries removed`);
         }
@@ -1081,68 +1081,6 @@ export default function AdminPage() {
                             {analytics.pipelineHealth.successRate}%
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Accuracy */}
-                  <div className="border-b border-card-border">
-                    <div className="px-4 py-2 border-b border-card-border">
-                      <span className="text-[10px] text-muted tracking-widest">PREDICTION ACCURACY</span>
-                    </div>
-                    <div className="flex items-center gap-6 px-6 py-4">
-                      {/* Accuracy ring */}
-                      <div className="relative flex-shrink-0">
-                        <svg width="72" height="72" viewBox="0 0 72 72">
-                          <circle cx="36" cy="36" r="30" fill="none" stroke="currentColor" strokeWidth="4" className="text-card-border" />
-                          <circle
-                            cx="36" cy="36" r="30" fill="none" strokeWidth="4"
-                            className="text-accent"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeDasharray={`${(analytics.accuracy.percentCorrect / 100) * 188.5} 188.5`}
-                            transform="rotate(-90 36 36)"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-sm font-bold text-accent">{analytics.accuracy.percentCorrect}%</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px]">
-                        <span className="text-muted tracking-widest">CORRECT</span>
-                        <span className="text-bullish font-bold">{analytics.accuracy.correctCount}</span>
-                        <span className="text-muted tracking-widest">INCORRECT</span>
-                        <span className="text-bearish font-bold">{analytics.accuracy.totalPredictions - analytics.accuracy.correctCount}</span>
-                        <span className="text-muted tracking-widest">TOTAL</span>
-                        <span className="text-foreground font-bold">{analytics.accuracy.totalPredictions}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Accuracy By Sector */}
-                  {analytics.accuracyBySector && analytics.accuracyBySector.length > 0 && (
-                    <div className="border-b border-card-border">
-                      <div className="px-4 py-2 border-b border-card-border">
-                        <span className="text-[10px] text-muted tracking-widest">ACCURACY BY SECTOR</span>
-                      </div>
-                      <div className="divide-y divide-card-border">
-                        {analytics.accuracyBySector.map((s) => (
-                          <div key={s.sector} className="px-6 py-2 flex items-center justify-between text-[10px] hover:bg-card-border/10 transition-colors">
-                            <span className="text-foreground uppercase font-bold w-32 truncate">{s.sector}</span>
-                            <div className="flex items-center gap-3 flex-1 justify-end">
-                              <div className="w-40 h-1.5 bg-card-border rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-300 ${s.pct >= 50 ? "bg-bullish" : "bg-bearish"}`}
-                                  style={{ width: `${Math.min(100, s.pct)}%` }}
-                                />
-                              </div>
-                              <span className={`w-12 text-right font-bold ${s.pct >= 50 ? "text-bullish" : "text-bearish"}`}>
-                                {s.pct}%
-                              </span>
-                              <span className="text-muted w-16 text-right">{s.correct}/{s.total}</span>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}

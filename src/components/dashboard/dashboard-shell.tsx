@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TabBar, type DashboardTab } from "./tab-bar";
+import { BottomNav } from "./bottom-nav";
+import { SwipeContainer } from "./swipe-container";
 import { MarketSummary } from "./market-summary";
 import { TopMovers } from "./top-movers";
 import { SectorHeatmap } from "./sector-heatmap";
@@ -11,7 +13,7 @@ import { TickerTable } from "./ticker-table";
 import { ArticlesFeed } from "./articles-feed";
 import { MarketSentimentChart } from "@/components/charts/market-sentiment-chart";
 import { MarketBriefing } from "./market-briefing";
-import { AccuracyDashboard } from "./accuracy-dashboard";
+import { EarningsCalendar } from "./earnings-calendar";
 import { IndexBar } from "./index-bar";
 import type { TickerSummary, Article, Analysis } from "@/lib/types";
 
@@ -33,6 +35,18 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
     setActiveTab(tab);
     window.scrollTo(0, 0);
   }, []);
+
+  const TAB_ORDER: DashboardTab[] = ["OVERVIEW", "TICKERS", "NEWS", "CHARTS", "BRIEFING", "EARNINGS"];
+
+  const handleSwipeLeft = useCallback(() => {
+    const idx = TAB_ORDER.indexOf(activeTab);
+    if (idx < TAB_ORDER.length - 1) handleTabChange(TAB_ORDER[idx + 1]);
+  }, [activeTab, handleTabChange]);
+
+  const handleSwipeRight = useCallback(() => {
+    const idx = TAB_ORDER.indexOf(activeTab);
+    if (idx > 0) handleTabChange(TAB_ORDER[idx - 1]);
+  }, [activeTab, handleTabChange]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -57,7 +71,7 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
           handleTabChange("BRIEFING");
           break;
         case "6":
-          handleTabChange("ACCURACY");
+          handleTabChange("EARNINGS");
           break;
         case "c":
         case "C":
@@ -77,6 +91,8 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
       <IndexBar />
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
+      <SwipeContainer onSwipeLeft={handleSwipeLeft} onSwipeRight={handleSwipeRight}>
+      <div className="pb-16 lg:pb-0">
       {activeTab === "OVERVIEW" && (
         <>
           <MarketSummary tickers={tickers} totalArticles={totalArticleCount} />
@@ -99,16 +115,20 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
       )}
 
       {activeTab === "CHARTS" && (
-        <MarketSentimentChart />
+        <MarketSentimentChart tickers={tickers.map(t => t.ticker)} />
       )}
 
       {activeTab === "BRIEFING" && (
         <MarketBriefing />
       )}
 
-      {activeTab === "ACCURACY" && (
-        <AccuracyDashboard />
+      {activeTab === "EARNINGS" && (
+        <EarningsCalendar />
       )}
+      </div>
+      </SwipeContainer>
+
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </>
   );
 }

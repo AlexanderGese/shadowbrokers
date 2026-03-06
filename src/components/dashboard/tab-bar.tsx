@@ -1,6 +1,6 @@
 "use client";
 
-export type DashboardTab = "OVERVIEW" | "TICKERS" | "NEWS" | "CHARTS" | "BRIEFING" | "ACCURACY";
+export type DashboardTab = "OVERVIEW" | "TICKERS" | "NEWS" | "CHARTS" | "BRIEFING" | "EARNINGS";
 
 const TABS: { key: DashboardTab; label: string; shortcut: string }[] = [
   { key: "OVERVIEW", label: "OVERVIEW", shortcut: "1" },
@@ -8,7 +8,7 @@ const TABS: { key: DashboardTab; label: string; shortcut: string }[] = [
   { key: "NEWS", label: "NEWS", shortcut: "3" },
   { key: "CHARTS", label: "CHARTS", shortcut: "4" },
   { key: "BRIEFING", label: "BRIEFING", shortcut: "5" },
-  { key: "ACCURACY", label: "ACCURACY", shortcut: "6" },
+  { key: "EARNINGS", label: "EARNINGS", shortcut: "6" },
 ];
 
 interface TabBarProps {
@@ -18,7 +18,7 @@ interface TabBarProps {
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
-    <div className="sticky top-0 z-40 border-b border-card-border bg-background/95 backdrop-blur-sm">
+    <div className="hidden lg:block sticky top-0 z-40 border-b border-card-border bg-background/95 backdrop-blur-sm">
       <div className="flex items-center justify-between px-4">
         <div className="flex overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (

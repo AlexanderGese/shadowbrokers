@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { TickerSummary } from "@/lib/types";
+import { SentimentSparkline } from "@/components/charts/sentiment-sparkline";
 
 interface TickerTableProps {
   tickers: TickerSummary[];
@@ -16,6 +17,33 @@ export function TickerTable({ tickers }: TickerTableProps) {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [filter, setFilter] = useState<"all" | "stock" | "etf">("all");
   const [sentimentFilter, setSentimentFilter] = useState<"all" | "bullish" | "bearish" | "neutral">("all");
+  const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
+
+  useEffect(() => {
+    // Fetch sparkline data for top tickers
+    const topTickers = tickers.slice(0, 20).map(t => t.ticker);
+    if (topTickers.length === 0) return;
+
+    Promise.all(
+      topTickers.map(ticker =>
+        fetch(`/api/charts/sentiment?ticker=${ticker}&range=7d`)
+          .then(r => r.json())
+          .then(d => {
+            const points = (d.data || []).map((p: { bullish: number; bearish: number }) =>
+              p.bullish - p.bearish
+            );
+            return { ticker, points };
+          })
+          .catch(() => ({ ticker, points: [] as number[] }))
+      )
+    ).then(results => {
+      const map: Record<string, number[]> = {};
+      for (const r of results) {
+        if (r.points.length >= 2) map[r.ticker] = r.points;
+      }
+      setSparklines(map);
+    });
+  }, [tickers]);
 
   const filtered = tickers.filter((t) => {
     if (filter !== "all" && t.asset_type !== filter) return false;
@@ -116,6 +144,9 @@ export function TickerTable({ tickers }: TickerTableProps) {
               <th className="text-left px-3 py-2 text-muted font-medium tracking-wider hidden 2xl:table-cell">
                 ABOUT
               </th>
+              <th className="text-center px-3 py-2 text-muted font-medium tracking-wider hidden lg:table-cell">
+                7D TREND
+              </th>
               <th className="text-center px-3 py-2 text-muted font-medium tracking-wider cursor-pointer hover:text-foreground" onClick={() => toggleSort("sentiment")}>
                 SIGNAL{sortArrow("sentiment")}
               </th>
@@ -159,6 +190,16 @@ export function TickerTable({ tickers }: TickerTableProps) {
                   </td>
                   <td className="px-3 py-2 text-[10px] text-muted truncate max-w-[220px] hidden 2xl:table-cell">
                     {t.description || "---"}
+                  </td>
+                  <td className="px-3 py-2 text-center hidden lg:table-cell">
+                    {sparklines[t.ticker] ? (
+                      <SentimentSparkline
+                        points={sparklines[t.ticker]}
+                        color={t.overall_sentiment === "bullish" ? "#00ff88" : t.overall_sentiment === "bearish" ? "#ff4444" : "#ffaa00"}
+                      />
+                    ) : (
+                      <span className="text-[9px] text-muted">---</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-1.5 py-px ${sentBg} ${sentColor}`}>

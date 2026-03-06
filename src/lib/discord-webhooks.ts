@@ -26,12 +26,17 @@ async function getActiveWebhooks(type: "alerts" | "briefings" | "danger" | "high
   return (data || []) as WebhookConfig[];
 }
 
+const WEBHOOK_IDENTITY = {
+  username: "SHADOWBROKERS",
+  avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
+};
+
 async function sendDiscordEmbed(webhookUrl: string, embed: Record<string, unknown>): Promise<boolean> {
   try {
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [embed] }),
+      body: JSON.stringify({ ...WEBHOOK_IDENTITY, embeds: [embed] }),
     });
     return res.ok;
   } catch {
