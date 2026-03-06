@@ -28,6 +28,8 @@ interface UserInfo {
   display_name: string | null;
   created_at: string;
   last_sign_in_at: string | null;
+  plan: string;
+  renewal_date: string | null;
 }
 
 interface ArticleRow {
@@ -78,6 +80,13 @@ export default function AdminPage() {
   // Users tab
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUser, setNewUser] = useState({ email: "", password: "", display_name: "", plan: "free" });
+  const [createUserMsg, setCreateUserMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editPlan, setEditPlan] = useState("");
+  const [editRenewal, setEditRenewal] = useState("");
+  const [userActionMsg, setUserActionMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Data tab
   const [articles, setArticles] = useState<ArticleRow[]>([]);
@@ -163,6 +172,75 @@ export default function AdminPage() {
       // ignore
     } finally {
       setUsersLoading(false);
+    }
+  }
+
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateUserMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCreateUserMsg({ type: "ok", text: `User ${data.user.email} created` });
+        setNewUser({ email: "", password: "", display_name: "", plan: "free" });
+        setShowCreateUser(false);
+        loadUsers();
+      } else {
+        setCreateUserMsg({ type: "err", text: data.error });
+      }
+    } catch {
+      setCreateUserMsg({ type: "err", text: "Network error" });
+    }
+  }
+
+  async function deleteUser(userId: string, email: string) {
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+    setUserActionMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserActionMsg({ type: "ok", text: `User ${email} deleted` });
+        setUsers(users.filter((u) => u.id !== userId));
+      } else {
+        setUserActionMsg({ type: "err", text: data.error });
+      }
+    } catch {
+      setUserActionMsg({ type: "err", text: "Failed to delete user" });
+    }
+  }
+
+  async function updateSubscription(userId: string) {
+    setUserActionMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          plan: editPlan,
+          renewal_date: editRenewal || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserActionMsg({ type: "ok", text: "Subscription updated" });
+        setEditingUser(null);
+        loadUsers();
+      } else {
+        setUserActionMsg({ type: "err", text: data.error });
+      }
+    } catch {
+      setUserActionMsg({ type: "err", text: "Failed to update" });
     }
   }
 
@@ -461,10 +539,105 @@ export default function AdminPage() {
             <div>
               <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
                 <span className="text-[10px] text-muted tracking-widest">REGISTERED USERS ({users.length})</span>
-                <button onClick={loadUsers} className="text-[10px] text-accent hover:text-accent/80 tracking-widest">
-                  REFRESH
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCreateUser(!showCreateUser)}
+                    className="text-[10px] px-3 py-1 bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-colors tracking-widest"
+                  >
+                    + CREATE USER
+                  </button>
+                  <button onClick={loadUsers} className="text-[10px] text-accent hover:text-accent/80 tracking-widest">
+                    REFRESH
+                  </button>
+                </div>
               </div>
+
+              {/* Status messages */}
+              {(createUserMsg || userActionMsg) && (
+                <div className="px-4 py-2 border-b border-card-border">
+                  {createUserMsg && (
+                    <div className={`text-[10px] ${createUserMsg.type === "ok" ? "text-bullish" : "text-bearish"}`}>
+                      [{createUserMsg.type === "ok" ? "OK" : "ERR"}] {createUserMsg.text}
+                    </div>
+                  )}
+                  {userActionMsg && (
+                    <div className={`text-[10px] ${userActionMsg.type === "ok" ? "text-bullish" : "text-bearish"}`}>
+                      [{userActionMsg.type === "ok" ? "OK" : "ERR"}] {userActionMsg.text}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Create User Form */}
+              {showCreateUser && (
+                <div className="p-4 border-b border-card-border bg-background/50">
+                  <form onSubmit={createUser} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] text-muted tracking-widest block mb-1">USERNAME</label>
+                        <input
+                          type="text"
+                          value={newUser.display_name}
+                          onChange={(e) => setNewUser({ ...newUser, display_name: e.target.value })}
+                          placeholder="agent_smith"
+                          className="w-full bg-background border border-card-border px-3 py-1.5 text-[10px] text-foreground focus:border-accent focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted tracking-widest block mb-1">EMAIL *</label>
+                        <input
+                          type="email"
+                          value={newUser.email}
+                          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                          required
+                          placeholder="user@email.com"
+                          className="w-full bg-background border border-card-border px-3 py-1.5 text-[10px] text-foreground focus:border-accent focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted tracking-widest block mb-1">PASSWORD *</label>
+                        <input
+                          type="text"
+                          value={newUser.password}
+                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                          required
+                          minLength={6}
+                          placeholder="min 6 chars"
+                          className="w-full bg-background border border-card-border px-3 py-1.5 text-[10px] text-foreground focus:border-accent focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted tracking-widest block mb-1">PLAN</label>
+                        <select
+                          value={newUser.plan}
+                          onChange={(e) => setNewUser({ ...newUser, plan: e.target.value })}
+                          className="w-full bg-background border border-card-border px-3 py-1.5 text-[10px] text-foreground focus:outline-none"
+                        >
+                          <option value="free">FREE</option>
+                          <option value="pro">PRO</option>
+                          <option value="ultra">ULTRA</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        className="text-[10px] px-4 py-1.5 bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-colors tracking-widest"
+                      >
+                        CREATE
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateUser(false)}
+                        className="text-[10px] px-4 py-1.5 border border-card-border text-muted hover:text-foreground transition-colors tracking-widest"
+                      >
+                        CANCEL
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {usersLoading ? (
                 <div className="p-8 text-center text-xs text-muted">LOADING USERS...</div>
               ) : (
@@ -472,26 +645,106 @@ export default function AdminPage() {
                   <table className="w-full text-[10px]">
                     <thead>
                       <tr className="border-b border-card-border text-muted tracking-widest">
-                        <th className="px-4 py-2 text-left">EMAIL</th>
-                        <th className="px-4 py-2 text-left">DISPLAY NAME</th>
-                        <th className="px-4 py-2 text-left">CREATED</th>
-                        <th className="px-4 py-2 text-left">LAST SIGN IN</th>
+                        <th className="px-3 py-2 text-left">USERNAME</th>
+                        <th className="px-3 py-2 text-left">EMAIL</th>
+                        <th className="px-3 py-2 text-left">PLAN</th>
+                        <th className="px-3 py-2 text-left">RENEWAL</th>
+                        <th className="px-3 py-2 text-left">CREATED</th>
+                        <th className="px-3 py-2 text-left">LAST LOGIN</th>
+                        <th className="px-3 py-2 text-right">ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-card-border">
                       {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-card-border/20 transition-colors">
-                          <td className="px-4 py-2 text-foreground">{u.email}</td>
-                          <td className="px-4 py-2 text-muted">{u.display_name || "—"}</td>
-                          <td className="px-4 py-2 text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
-                          <td className="px-4 py-2 text-muted">
+                        <tr key={u.id} className="hover:bg-card-border/20 transition-colors group">
+                          <td className="px-3 py-2 text-foreground font-bold">{u.display_name || "—"}</td>
+                          <td className="px-3 py-2 text-muted">{u.email}</td>
+                          <td className="px-3 py-2">
+                            <span className={`px-1.5 py-0.5 text-[9px] tracking-widest border ${
+                              u.plan === "ultra" ? "bg-accent/10 text-accent border-accent/30" :
+                              u.plan === "pro" ? "bg-bullish/10 text-bullish border-bullish/30" :
+                              "bg-card-border/20 text-muted border-card-border"
+                            }`}>
+                              {u.plan.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-muted">
+                            {u.renewal_date ? new Date(u.renewal_date).toLocaleDateString() : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
+                          <td className="px-3 py-2 text-muted">
                             {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "Never"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingUser(editingUser === u.id ? null : u.id);
+                                  setEditPlan(u.plan);
+                                  setEditRenewal(u.renewal_date || "");
+                                }}
+                                className="text-[9px] px-2 py-1 border border-card-border text-muted hover:text-accent hover:border-accent/30 transition-colors tracking-widest"
+                              >
+                                EDIT
+                              </button>
+                              <button
+                                onClick={() => deleteUser(u.id, u.email || "")}
+                                className="text-[9px] px-2 py-1 border border-bearish/20 text-bearish/50 hover:text-bearish hover:border-bearish/40 transition-colors tracking-widest"
+                              >
+                                DEL
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
+                      {users.map((u) =>
+                        editingUser === u.id ? (
+                          <tr key={`edit-${u.id}`} className="bg-background/50">
+                            <td colSpan={7} className="px-3 py-3">
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <label className="text-[9px] text-muted tracking-widest block mb-1">PLAN</label>
+                                  <select
+                                    value={editPlan}
+                                    onChange={(e) => setEditPlan(e.target.value)}
+                                    className="bg-background border border-card-border px-2 py-1 text-[10px] text-foreground focus:outline-none"
+                                  >
+                                    <option value="free">FREE</option>
+                                    <option value="pro">PRO</option>
+                                    <option value="ultra">ULTRA</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[9px] text-muted tracking-widest block mb-1">RENEWAL DATE</label>
+                                  <input
+                                    type="date"
+                                    value={editRenewal ? editRenewal.split("T")[0] : ""}
+                                    onChange={(e) => setEditRenewal(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                                    className="bg-background border border-card-border px-2 py-1 text-[10px] text-foreground focus:outline-none"
+                                  />
+                                </div>
+                                <div className="flex items-end gap-1 pt-3">
+                                  <button
+                                    onClick={() => updateSubscription(u.id)}
+                                    className="text-[9px] px-3 py-1 bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-colors tracking-widest"
+                                  >
+                                    SAVE
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingUser(null)}
+                                    className="text-[9px] px-3 py-1 border border-card-border text-muted hover:text-foreground transition-colors tracking-widest"
+                                  >
+                                    CANCEL
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null
+                      )}
                       {users.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-muted text-center">No users found.</td>
+                          <td colSpan={7} className="px-4 py-4 text-muted text-center">No users found.</td>
                         </tr>
                       )}
                     </tbody>

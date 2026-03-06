@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,15 +19,37 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const supabase = createBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      // Resolve username to email if needed
+      let email = identifier.trim();
+      if (!email.includes("@")) {
+        const res = await fetch("/api/auth/resolve-username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: email }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.email) {
+          setError("Username not found");
+          setLoading(false);
+          return;
+        }
+        email = data.email;
+      }
 
-    if (error) {
-      setError(error.message);
+      const supabase = createBrowserClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      } else {
+        router.push(redirectTo);
+        router.refresh();
+      }
+    } catch {
+      setError("Network error");
       setLoading(false);
-    } else {
-      router.push(redirectTo);
-      router.refresh();
     }
   }
 
@@ -38,26 +60,32 @@ export default function LoginPage() {
       </div>
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
         <div>
-          <label className="text-[10px] text-muted tracking-widest block mb-1">EMAIL</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full bg-background border border-card-border px-3 py-2 text-xs text-foreground focus:border-accent focus:outline-none"
-            placeholder="agent@shadowbrokers.io"
-          />
+          <label className="text-[10px] text-muted tracking-widest block mb-1">USERNAME OR EMAIL</label>
+          <div className="flex items-center border border-card-border bg-background">
+            <span className="text-[10px] text-accent px-3 shrink-0">@</span>
+            <input
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              required
+              className="w-full bg-transparent text-xs text-foreground py-2 pr-3 focus:outline-none placeholder:text-muted/40"
+              placeholder="username or email"
+            />
+          </div>
         </div>
         <div>
           <label className="text-[10px] text-muted tracking-widest block mb-1">PASSWORD</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full bg-background border border-card-border px-3 py-2 text-xs text-foreground focus:border-accent focus:outline-none"
-            placeholder="••••••••"
-          />
+          <div className="flex items-center border border-card-border bg-background">
+            <span className="text-[10px] text-accent px-3 shrink-0">$</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full bg-transparent text-xs text-foreground py-2 pr-3 focus:outline-none placeholder:text-muted/40"
+              placeholder="password"
+            />
+          </div>
         </div>
         {error && (
           <div className="text-[10px] text-bearish bg-bearish/10 px-3 py-2 border border-bearish/20">
