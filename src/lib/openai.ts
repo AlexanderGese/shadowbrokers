@@ -140,33 +140,44 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
     const insights = await analyzeBatch(batch);
 
     if (insights.length > 0) {
-      // Capture current prices at prediction time for accurate tracking
+      // Capture current prices at prediction time for accurate tracking (parallel, best-effort)
       const uniqueTickers = [...new Set(insights.map((ins) => ins.ticker))];
       const priceAtPrediction = new Map<string, number>();
-      for (const ticker of uniqueTickers) {
-        try {
+      const priceResults = await Promise.allSettled(
+        uniqueTickers.map(async (ticker) => {
           const price = await getPrice(ticker);
-          if (price) priceAtPrediction.set(ticker, price.currentPrice);
-        } catch {
-          // Price capture is best-effort
+          return { ticker, price: price?.currentPrice };
+        })
+      );
+      for (const result of priceResults) {
+        if (result.status === "fulfilled" && result.value.price) {
+          priceAtPrediction.set(result.value.ticker, result.value.price);
         }
       }
 
-      const { error: insertError } = await supabase.from("analyses").insert(
-        insights.map((ins) => ({
-          article_id: ins.article_id,
-          ticker: ins.ticker,
-          asset_type: ins.asset_type,
-          sentiment: ins.sentiment,
-          confidence: ins.confidence,
-          reasoning: ins.reasoning,
-          predicted_direction: ins.predicted_direction,
-          predicted_magnitude: ins.predicted_magnitude,
-          topic: ins.topic,
-          price_at_prediction: priceAtPrediction.get(ins.ticker) || null,
-        }))
-      );
-      if (insertError) console.error("[OpenAI] Insert error:", insertError);
+      // Try inserting with price_at_prediction first, fall back without it
+      const rows = insights.map((ins) => ({
+        article_id: ins.article_id,
+        ticker: ins.ticker,
+        asset_type: ins.asset_type,
+        sentiment: ins.sentiment,
+        confidence: ins.confidence,
+        reasoning: ins.reasoning,
+        predicted_direction: ins.predicted_direction,
+        predicted_magnitude: ins.predicted_magnitude,
+        topic: ins.topic,
+        price_at_prediction: priceAtPrediction.get(ins.ticker) || null,
+      }));
+
+      let { error: insertError } = await supabase.from("analyses").insert(rows);
+      if (insertError) {
+        // Column might not exist yet — retry without price_at_prediction
+        console.error("[OpenAI] Insert error (retrying without price):", insertError.message);
+        const fallbackRows = rows.map(({ price_at_prediction: _, ...rest }) => rest);
+        const fallbackResult = await supabase.from("analyses").insert(fallbackRows);
+        insertError = fallbackResult.error;
+        if (insertError) console.error("[OpenAI] Insert error:", insertError);
+      }
       totalInsights += insights.length;
     }
 

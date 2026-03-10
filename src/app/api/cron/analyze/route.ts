@@ -16,9 +16,25 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const rssResult = await fetchAndSaveArticles();
-    const analysisResult = await analyzeAndStore();
-    await refreshTickerSummaries();
+    let rssResult = { fetched: 0, saved: 0 };
+    try {
+      rssResult = await fetchAndSaveArticles();
+    } catch (e) {
+      console.error("[CRON] RSS fetch error:", e);
+    }
+
+    let analysisResult = { analyzed: 0, insights: 0 };
+    try {
+      analysisResult = await analyzeAndStore();
+    } catch (e) {
+      console.error("[CRON] Analysis error:", e);
+    }
+
+    try {
+      await refreshTickerSummaries();
+    } catch (e) {
+      console.error("[CRON] Ticker summary error:", e);
+    }
 
     // Notify high-confidence predictions via user webhooks
     try {

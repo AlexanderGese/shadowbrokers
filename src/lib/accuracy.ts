@@ -10,13 +10,30 @@ export async function checkPredictionAccuracy(): Promise<number> {
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: analyses } = await supabase
+  // Try with price_at_prediction, fall back without it if column doesn't exist
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let analyses: any[] | null = null;
+  const analysesResult = await supabase
     .from("analyses")
     .select("id, ticker, predicted_direction, predicted_magnitude, confidence, price_at_prediction, created_at")
     .gte("created_at", threeDaysAgo)
     .lte("created_at", oneDayAgo)
     .gte("confidence", 0.65)
     .limit(50);
+
+  if (analysesResult.error) {
+    // Column might not exist — retry without it
+    const fallback = await supabase
+      .from("analyses")
+      .select("id, ticker, predicted_direction, predicted_magnitude, confidence, created_at")
+      .gte("created_at", threeDaysAgo)
+      .lte("created_at", oneDayAgo)
+      .gte("confidence", 0.65)
+      .limit(50);
+    analyses = fallback.data;
+  } else {
+    analyses = analysesResult.data;
+  }
 
   if (!analyses?.length) return 0;
 
@@ -32,21 +49,22 @@ export async function checkPredictionAccuracy(): Promise<number> {
 
   if (!unchecked.length) return 0;
 
-  // Get unique tickers and fetch current prices
+  // Get unique tickers and fetch current prices (parallel)
   const tickerSet = new Set(unchecked.map((a) => a.ticker));
   const priceMap = new Map<string, { currentPrice: number; previousClose: number }>();
 
-  for (const ticker of tickerSet) {
-    try {
+  const priceResults = await Promise.allSettled(
+    [...tickerSet].map(async (ticker) => {
       const price = await getPrice(ticker);
-      if (price) {
-        priceMap.set(ticker, {
-          currentPrice: price.currentPrice,
-          previousClose: price.previousClose,
-        });
-      }
-    } catch {
-      // skip failed price fetches
+      return { ticker, price };
+    })
+  );
+  for (const result of priceResults) {
+    if (result.status === "fulfilled" && result.value.price) {
+      priceMap.set(result.value.ticker, {
+        currentPrice: result.value.price.currentPrice,
+        previousClose: result.value.price.previousClose,
+      });
     }
   }
 
