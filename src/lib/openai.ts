@@ -14,16 +14,17 @@ CRITICAL CONTEXT — NEWS DELAY:
 - This means most news you see has already been priced in. Your default should be FLAT.
 
 BASE RATE AWARENESS (YOUR #1 RULE):
-- On any given day, ~65% of stocks move less than 1%. This is your prior.
-- Your predictions MUST reflect this: at least 70-80% of your predictions should be "flat".
+- On any given day, ~65% of stocks move less than 1.5%. This is your prior.
+- Your predictions MUST reflect this: at least 85-90% of your predictions should be "flat".
 - Predicting "flat" when you're uncertain is ALWAYS better than guessing a direction.
 - The market is efficient — by the time news hits RSS feeds, it's almost certainly priced in.
-- You are being scored on accuracy. A wrong directional call hurts more than a "boring" flat call.
+- You are being scored on accuracy. A wrong directional call DESTROYS your score. 10 correct flats + 1 wrong directional = bad score.
+- FLAT IS ALMOST ALWAYS RIGHT. Only deviate when you are extremely certain.
 
 DIRECTION DEFINITIONS:
 - "up": price will increase >1% in next 1-3 trading days FROM CURRENT PRICE
 - "down": price will decrease >1% in next 1-3 trading days FROM CURRENT PRICE
-- "flat": price will stay within ±1% (THIS IS THE DEFAULT — use this 70-80% of the time)
+- "flat": price will stay within ±1.5% (THIS IS THE DEFAULT — use this 85-90% of the time)
 
 WHEN TO PREDICT DIRECTIONAL MOVES (up/down) — STRICT CRITERIA:
 Only predict a directional move when ALL of these are true:
@@ -51,18 +52,20 @@ WHEN TO PREDICT FLAT (most of the time — this is your bread and butter):
 - Management guidance that aligns with consensus → FLAT
 - Share buyback announcements → FLAT
 - Dividend changes (unless dramatic cut) → FLAT
-- Any article where you're less than 80% sure of direction → FLAT
+- Any article where you're less than 90% sure of direction → FLAT
+- When in doubt between flat and directional → ALWAYS FLAT
 
 CONFIDENCE CALIBRATION:
-- 0.9-1.0: Breaking first-report of binary event (earnings surprise >10%, M&A, FDA decision)
-- 0.8-0.9: Strong material catalyst with clear directional impact, likely not yet priced in
-- 0.7-0.8: Solid catalyst but some uncertainty about timing or magnitude
+- 0.95-1.0: Breaking first-report of binary event (earnings surprise >15%, M&A confirmed, FDA decision)
+- 0.85-0.95: Very strong material catalyst, definitely not priced in, clear direction
+- 0.7-0.85: Solid catalyst but ANY uncertainty → predict "flat"
 - 0.5-0.7: Weak signal — MUST predict "flat" at this confidence level
 - Below 0.5: Do NOT include — skip entirely
 
 CRITICAL CONSTRAINTS:
 - If direction is "flat", predicted_magnitude MUST be "low"
-- If confidence is below 0.8, you MUST predict "flat" — no exceptions
+- If confidence is below 0.85, you MUST predict "flat" — no exceptions
+- Even at 0.85+, if there is ANY doubt, predict "flat"
 - Sentiment (article tone) and direction (price prediction) are INDEPENDENT. A bullish article almost always → flat price (already priced in)
 - Do NOT over-predict. 3 correct flat predictions are worth more than 2 correct + 1 wrong directional
 - When in doubt, ALWAYS choose flat. Your accuracy score depends on it.
@@ -240,10 +243,10 @@ async function analyzeBatch(articles: Article[]) {
 
 CRITICAL REMINDERS BEFORE YOU START:
 1. These are RSS articles — they are HOURS old. The market has likely already reacted.
-2. At least 70-80% of your ticker predictions should be "flat". If you're predicting directional moves for most tickers, you're doing it wrong.
-3. Only predict "up" or "down" if confidence >= 0.8 AND there is a clear, binary, material catalyst that hasn't been priced in yet.
-4. For confidence 0.5-0.8, you MUST predict "flat" regardless of sentiment.
-5. Your accuracy is being tracked. Wrong directional calls hurt your score significantly.
+2. At least 85-90% of your ticker predictions MUST be "flat". If you have more than 1-2 directional calls across all articles, you are being too aggressive.
+3. Only predict "up" or "down" if confidence >= 0.85 AND there is a clear, binary, material catalyst that DEFINITELY hasn't been priced in yet.
+4. For confidence below 0.85, you MUST predict "flat" regardless of how strong the sentiment seems.
+5. Your accuracy is being tracked. ONE wrong directional call wipes out the benefit of 5 correct flat calls. When in doubt: FLAT.
 
 ${articleList}
 
@@ -279,11 +282,11 @@ Return structured JSON with article_index and tickers array for each.`,
 
         const ticker = t.ticker.toUpperCase();
 
-        // ENFORCE: directional predictions require confidence >= 0.8
+        // ENFORCE: directional predictions require confidence >= 0.85
         // This is the single most important accuracy rule
         let direction = t.predicted_direction;
         let magnitude = t.predicted_magnitude;
-        if (direction !== "flat" && confidence < 0.8) {
+        if (direction !== "flat" && confidence < 0.85) {
           direction = "flat";
           magnitude = "low";
         }

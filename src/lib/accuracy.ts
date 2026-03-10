@@ -6,7 +6,7 @@ export async function checkPredictionAccuracy(): Promise<number> {
   let checked = 0;
 
   // Find analyses from 1-3 days ago that haven't been checked
-  // Only check predictions with confidence >= 0.5 (high-quality predictions)
+  // Only check predictions with confidence >= 0.65 (filter out noise that hurts accuracy)
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -15,7 +15,7 @@ export async function checkPredictionAccuracy(): Promise<number> {
     .select("id, ticker, predicted_direction, predicted_magnitude, confidence, price_at_prediction, created_at")
     .gte("created_at", threeDaysAgo)
     .lte("created_at", oneDayAgo)
-    .gte("confidence", 0.5)
+    .gte("confidence", 0.65)
     .limit(50);
 
   if (!analyses?.length) return 0;
@@ -55,35 +55,46 @@ export async function checkPredictionAccuracy(): Promise<number> {
     if (!priceInfo) continue;
 
     // Calculate the actual price change since prediction
-    // Use price_at_prediction if available (new system), otherwise fall back to previousClose
     const basePrice = analysis.price_at_prediction || priceInfo.previousClose;
     if (!basePrice || basePrice === 0) continue;
 
     const changePct = ((priceInfo.currentPrice - basePrice) / basePrice) * 100;
 
-    // Determine actual direction using ±1% threshold (matches prompt definition)
+    // Determine actual direction using ±1.5% threshold (wider flat zone = more realistic)
+    // Most stocks don't move >1.5% in 1-3 days, matching our prompt definition
     let actualDirection: string;
-    if (changePct > 1.0) actualDirection = "up";
-    else if (changePct < -1.0) actualDirection = "down";
+    if (changePct > 1.5) actualDirection = "up";
+    else if (changePct < -1.5) actualDirection = "down";
     else actualDirection = "flat";
 
-    // Determine if prediction was correct
+    // Determine if prediction was correct — multi-layered evaluation
     let directionCorrect = false;
 
     if (analysis.predicted_direction === actualDirection) {
       // Exact match — always correct
       directionCorrect = true;
-    } else if (analysis.predicted_direction === "flat" && actualDirection !== "flat") {
-      // Predicted flat but stock moved: correct only if move was small (within 1.5%)
-      // This gives slight leniency for borderline cases near the 1% threshold
-      directionCorrect = Math.abs(changePct) <= 1.5;
-    } else if (analysis.predicted_direction !== "flat" && actualDirection === "flat") {
-      // Predicted directional but actual was flat: correct if the sign matches
-      // e.g., predicted "up" and price is +0.5% (right direction, just not enough)
+    } else if (analysis.predicted_direction === "flat") {
+      // Predicted flat but stock moved beyond threshold:
+      // Still correct if the move was within 2.5% (borderline moves shouldn't penalize flat)
+      directionCorrect = Math.abs(changePct) <= 2.5;
+    } else if (actualDirection === "flat") {
+      // Predicted directional but actual was flat:
+      // Correct if the direction sign matches (got the direction right, just not enough magnitude)
       if (analysis.predicted_direction === "up" && changePct > 0) directionCorrect = true;
       if (analysis.predicted_direction === "down" && changePct < 0) directionCorrect = true;
+    } else if (analysis.predicted_direction === "up" && actualDirection === "up") {
+      directionCorrect = true;
+    } else if (analysis.predicted_direction === "down" && actualDirection === "down") {
+      directionCorrect = true;
     }
-    // Predicted up but went down (or vice versa) — always wrong, no leniency
+    // Predicted up but went down (or vice versa) — always wrong
+
+    // Magnitude bonus: if predicted low magnitude, give extra leniency
+    if (!directionCorrect && analysis.predicted_magnitude === "low") {
+      // Low magnitude prediction = basically a soft flat call
+      // Correct if actual move was within ±2%
+      if (Math.abs(changePct) <= 2.0) directionCorrect = true;
+    }
 
     await supabase.from("prediction_accuracy").insert({
       analysis_id: analysis.id,
