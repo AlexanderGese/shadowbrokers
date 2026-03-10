@@ -7,7 +7,7 @@ import { generateBriefing } from "@/lib/briefing";
 import { notifyHighConfidencePrediction } from "@/lib/discord-webhooks";
 import { createServerClient } from "@/lib/supabase/server";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -15,29 +15,37 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const results: Record<string, unknown> = { success: true, timestamp: new Date().toISOString() };
+
+  // Phase 1: RSS + Analysis (core pipeline)
   try {
-    let rssResult = { fetched: 0, saved: 0 };
-    try {
-      rssResult = await fetchAndSaveArticles();
-    } catch (e) {
-      console.error("[CRON] RSS fetch error:", e);
-    }
+    results.rss = await fetchAndSaveArticles();
+  } catch (e) {
+    console.error("[CRON] RSS fetch error:", e);
+    results.rss = { error: String(e) };
+  }
 
-    let analysisResult = { analyzed: 0, insights: 0 };
-    try {
-      analysisResult = await analyzeAndStore();
-    } catch (e) {
-      console.error("[CRON] Analysis error:", e);
-    }
+  try {
+    results.analysis = await analyzeAndStore();
+  } catch (e) {
+    console.error("[CRON] Analysis error:", e);
+    results.analysis = { error: String(e) };
+  }
 
-    try {
-      await refreshTickerSummaries();
-    } catch (e) {
-      console.error("[CRON] Ticker summary error:", e);
-    }
+  try {
+    await refreshTickerSummaries();
+    results.summaries = "ok";
+  } catch (e) {
+    console.error("[CRON] Ticker summary error:", e);
+    results.summaries = { error: String(e) };
+  }
 
-    // Notify high-confidence predictions via user webhooks
-    try {
+  // Phase 2: Secondary tasks (run in parallel to save time)
+  const [accuracyResult, alertsResult, briefingResult, highConfResult] = await Promise.allSettled([
+    checkPredictionAccuracy(),
+    checkAndTriggerAlerts(),
+    generateBriefing(),
+    (async () => {
       const supabase = createServerClient();
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: highConf } = await supabase
@@ -49,49 +57,14 @@ export async function GET(request: NextRequest) {
       for (const p of highConf || []) {
         await notifyHighConfidencePrediction(p.ticker, p.predicted_direction, p.confidence, p.reasoning);
       }
-    } catch (e) {
-      console.error("[CRON] High-confidence notification error:", e);
-    }
+      return (highConf || []).length;
+    })(),
+  ]);
 
-    // Check prediction accuracy for recent analyses
-    let accuracyChecked = 0;
-    try {
-      accuracyChecked = await checkPredictionAccuracy();
-    } catch (e) {
-      console.error("[CRON] Accuracy check error:", e);
-    }
+  results.accuracyChecked = accuracyResult.status === "fulfilled" ? accuracyResult.value : { error: String((accuracyResult as PromiseRejectedResult).reason) };
+  results.alertsTriggered = alertsResult.status === "fulfilled" ? alertsResult.value : { error: String((alertsResult as PromiseRejectedResult).reason) };
+  results.briefingGenerated = briefingResult.status === "fulfilled" ? briefingResult.value !== null : { error: String((briefingResult as PromiseRejectedResult).reason) };
+  results.highConfNotified = highConfResult.status === "fulfilled" ? highConfResult.value : { error: String((highConfResult as PromiseRejectedResult).reason) };
 
-    // Check and trigger alerts
-    let alertsTriggered = 0;
-    try {
-      alertsTriggered = await checkAndTriggerAlerts();
-    } catch (e) {
-      console.error("[CRON] Alerts check error:", e);
-    }
-
-    // Generate market briefing
-    let briefingGenerated = false;
-    try {
-      const briefing = await generateBriefing();
-      briefingGenerated = briefing !== null;
-    } catch (e) {
-      console.error("[CRON] Briefing generation error:", e);
-    }
-
-    return NextResponse.json({
-      success: true,
-      rss: rssResult,
-      analysis: analysisResult,
-      accuracyChecked,
-      alertsTriggered,
-      briefingGenerated,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("[CRON] Pipeline error:", error);
-    return NextResponse.json(
-      { error: "Cron pipeline failed", details: String(error) },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(results);
 }
