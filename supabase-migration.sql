@@ -1,55 +1,23 @@
 -- ============================================================
--- ShadowBrokers: Financial Intelligence Dashboard
--- Run this in Supabase SQL Editor (Dashboard > SQL Editor > New Query)
+-- ShadowBrokers: Migration — run this to add missing columns/tables
+-- Safe to run multiple times (uses IF NOT EXISTS / IF EXISTS checks)
+-- Run in Supabase Dashboard > SQL Editor
 -- ============================================================
 
--- Articles table: stores raw RSS feed articles
-CREATE TABLE IF NOT EXISTS articles (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  url TEXT UNIQUE NOT NULL,
-  source TEXT NOT NULL,
-  published_at TIMESTAMPTZ,
-  analyzed BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add missing columns to analyses table
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS topic TEXT;
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS price_at_prediction FLOAT;
 
--- Analyses table: per-ticker analysis from OpenAI
-CREATE TABLE IF NOT EXISTS analyses (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  article_id UUID REFERENCES articles(id) ON DELETE CASCADE,
-  ticker TEXT NOT NULL,
-  asset_type TEXT NOT NULL CHECK (asset_type IN ('stock', 'etf')),
-  sentiment TEXT NOT NULL CHECK (sentiment IN ('bullish', 'neutral', 'bearish')),
-  confidence FLOAT NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
-  reasoning TEXT NOT NULL,
-  predicted_direction TEXT NOT NULL CHECK (predicted_direction IN ('up', 'flat', 'down')),
-  predicted_magnitude TEXT NOT NULL CHECK (predicted_magnitude IN ('low', 'medium', 'high')),
-  topic TEXT,
-  price_at_prediction FLOAT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add missing columns to ticker_summaries table
+ALTER TABLE ticker_summaries ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE ticker_summaries ADD COLUMN IF NOT EXISTS sector TEXT;
+ALTER TABLE ticker_summaries ADD COLUMN IF NOT EXISTS topic TEXT;
 
--- Ticker summaries: aggregated view per ticker
-CREATE TABLE IF NOT EXISTS ticker_summaries (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  ticker TEXT UNIQUE NOT NULL,
-  name TEXT,
-  description TEXT,
-  sector TEXT,
-  topic TEXT,
-  asset_type TEXT NOT NULL,
-  overall_sentiment TEXT NOT NULL,
-  avg_confidence FLOAT NOT NULL,
-  bullish_count INT DEFAULT 0,
-  bearish_count INT DEFAULT 0,
-  neutral_count INT DEFAULT 0,
-  num_articles INT DEFAULT 0,
-  last_updated TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add missing columns to user_webhooks table
+ALTER TABLE user_webhooks ADD COLUMN IF NOT EXISTS notify_accuracy_report BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE user_webhooks ADD COLUMN IF NOT EXISTS notify_portfolio BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Prediction accuracy: tracks whether predictions were correct
+-- Create prediction_accuracy table
 CREATE TABLE IF NOT EXISTS prediction_accuracy (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   analysis_id UUID REFERENCES analyses(id) ON DELETE CASCADE,
@@ -61,7 +29,7 @@ CREATE TABLE IF NOT EXISTS prediction_accuracy (
   checked_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Price cache: stores Yahoo Finance price data
+-- Create price_cache table
 CREATE TABLE IF NOT EXISTS price_cache (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   ticker TEXT UNIQUE NOT NULL,
@@ -76,7 +44,7 @@ CREATE TABLE IF NOT EXISTS price_cache (
   fetched_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Market briefings: AI-generated market summaries
+-- Create market_briefings table
 CREATE TABLE IF NOT EXISTS market_briefings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   summary TEXT NOT NULL,
@@ -86,7 +54,7 @@ CREATE TABLE IF NOT EXISTS market_briefings (
   generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Alerts: user-configured ticker alerts
+-- Create alerts table
 CREATE TABLE IF NOT EXISTS alerts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -97,7 +65,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Notifications: user notifications
+-- Create notifications table
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -109,7 +77,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Watchlists: user-saved tickers
+-- Create watchlists table
 CREATE TABLE IF NOT EXISTS watchlists (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -118,7 +86,7 @@ CREATE TABLE IF NOT EXISTS watchlists (
   UNIQUE(user_id, ticker)
 );
 
--- Portfolio positions: user portfolio tracking
+-- Create portfolio_positions table
 CREATE TABLE IF NOT EXISTS portfolio_positions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -130,14 +98,14 @@ CREATE TABLE IF NOT EXISTS portfolio_positions (
   UNIQUE(user_id, ticker)
 );
 
--- Waitlist: pre-launch signups
+-- Create waitlist table
 CREATE TABLE IF NOT EXISTS waitlist (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Profiles: user profiles
+-- Create profiles table
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY,
   email TEXT,
@@ -146,7 +114,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- User webhooks: Discord webhook per user
+-- Create user_webhooks table
 CREATE TABLE IF NOT EXISTS user_webhooks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE,
@@ -161,7 +129,7 @@ CREATE TABLE IF NOT EXISTS user_webhooks (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Push subscriptions: web push notification subscriptions
+-- Create push_subscriptions table
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -170,7 +138,7 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Telegram integration: linked Telegram accounts
+-- Create user_telegram table
 CREATE TABLE IF NOT EXISTS user_telegram (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE,
@@ -184,7 +152,7 @@ CREATE TABLE IF NOT EXISTS user_telegram (
   notify_portfolio BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Telegram link tokens: temporary tokens for account linking
+-- Create telegram_link_tokens table
 CREATE TABLE IF NOT EXISTS telegram_link_tokens (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE,
@@ -193,7 +161,7 @@ CREATE TABLE IF NOT EXISTS telegram_link_tokens (
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes')
 );
 
--- Custom webhooks: generic HTTP webhooks per user
+-- Create user_custom_webhooks table
 CREATE TABLE IF NOT EXISTS user_custom_webhooks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -212,16 +180,10 @@ CREATE TABLE IF NOT EXISTS user_custom_webhooks (
 );
 
 -- ============================================================
--- Indexes
+-- Indexes (safe to re-run)
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_articles_analyzed ON articles(analyzed);
-CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC);
-CREATE INDEX IF NOT EXISTS idx_analyses_ticker ON analyses(ticker);
-CREATE INDEX IF NOT EXISTS idx_analyses_created ON analyses(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_analyses_article_id ON analyses(article_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_topic ON analyses(topic);
-CREATE INDEX IF NOT EXISTS idx_ticker_summaries_sentiment ON ticker_summaries(overall_sentiment);
 CREATE INDEX IF NOT EXISTS idx_prediction_accuracy_analysis ON prediction_accuracy(analysis_id);
 CREATE INDEX IF NOT EXISTS idx_prediction_accuracy_ticker ON prediction_accuracy(ticker);
 CREATE INDEX IF NOT EXISTS idx_prediction_accuracy_checked ON prediction_accuracy(checked_at DESC);
@@ -241,31 +203,33 @@ CREATE INDEX IF NOT EXISTS idx_user_telegram_chat ON user_telegram(chat_id);
 CREATE INDEX IF NOT EXISTS idx_custom_webhooks_user ON user_custom_webhooks(user_id);
 
 -- ============================================================
--- RLS Policies
+-- RLS + Policies for new tables
 -- ============================================================
 
-ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ticker_summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prediction_accuracy ENABLE ROW LEVEL SECURITY;
 ALTER TABLE price_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE market_briefings ENABLE ROW LEVEL SECURITY;
 
--- Public read access for dashboard data
-CREATE POLICY "Allow public read articles" ON articles FOR SELECT USING (true);
-CREATE POLICY "Allow public read analyses" ON analyses FOR SELECT USING (true);
-CREATE POLICY "Allow public read ticker_summaries" ON ticker_summaries FOR SELECT USING (true);
-CREATE POLICY "Allow public read prediction_accuracy" ON prediction_accuracy FOR SELECT USING (true);
-CREATE POLICY "Allow public read price_cache" ON price_cache FOR SELECT USING (true);
-CREATE POLICY "Allow public read market_briefings" ON market_briefings FOR SELECT USING (true);
-
--- Service role full access (for API routes)
-CREATE POLICY "Allow service role insert articles" ON articles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow service role update articles" ON articles FOR UPDATE USING (true);
-CREATE POLICY "Allow service role insert analyses" ON analyses FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow service role insert ticker_summaries" ON ticker_summaries FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow service role update ticker_summaries" ON ticker_summaries FOR UPDATE USING (true);
-CREATE POLICY "Allow service role insert prediction_accuracy" ON prediction_accuracy FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow service role insert price_cache" ON price_cache FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow service role update price_cache" ON price_cache FOR UPDATE USING (true);
-CREATE POLICY "Allow service role insert market_briefings" ON market_briefings FOR INSERT WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read prediction_accuracy') THEN
+    CREATE POLICY "Allow public read prediction_accuracy" ON prediction_accuracy FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow service role insert prediction_accuracy') THEN
+    CREATE POLICY "Allow service role insert prediction_accuracy" ON prediction_accuracy FOR INSERT WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read price_cache') THEN
+    CREATE POLICY "Allow public read price_cache" ON price_cache FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow service role insert price_cache') THEN
+    CREATE POLICY "Allow service role insert price_cache" ON price_cache FOR INSERT WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow service role update price_cache') THEN
+    CREATE POLICY "Allow service role update price_cache" ON price_cache FOR UPDATE USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read market_briefings') THEN
+    CREATE POLICY "Allow public read market_briefings" ON market_briefings FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow service role insert market_briefings') THEN
+    CREATE POLICY "Allow service role insert market_briefings" ON market_briefings FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;

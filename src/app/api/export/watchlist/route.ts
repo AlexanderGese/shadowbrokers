@@ -8,7 +8,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: watchlist } = await supabase
-    .from("watchlist")
+    .from("watchlists")
     .select("ticker, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
