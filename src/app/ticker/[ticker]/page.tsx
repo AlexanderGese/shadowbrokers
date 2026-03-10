@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { SentimentTrend } from "@/components/charts/sentiment-trend";
 import { StarButton } from "@/components/ui/star-button";
 import { AlertManager } from "@/components/alerts/alert-manager";
+import { TickerChat } from "@/components/ticker/ticker-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,11 @@ export default async function TickerPage({ params }: TickerPageProps) {
       <div className="border-b border-card-border px-6 py-4">
         <div className="text-[10px] text-muted tracking-widest mb-2">SENTIMENT TREND (30D)</div>
         <SentimentTrend ticker={summary.ticker} range="30d" />
+      </div>
+
+      {/* AI Chat */}
+      <div className="border-b border-card-border px-6 py-4">
+        <TickerChat ticker={summary.ticker} />
       </div>
 
       {/* Topics Section */}

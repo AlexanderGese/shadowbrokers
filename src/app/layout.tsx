@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { getCurrentUser } from "@/lib/auth";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ServiceWorkerRegistration } from "@/components/providers/sw-registration";
@@ -36,6 +37,7 @@ export default async function RootLayout({
         <AuthProvider initialUser={user}>
           {children}
           <ServiceWorkerRegistration />
+          <Analytics />
         </AuthProvider>
       </body>
     </html>
