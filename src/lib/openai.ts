@@ -127,7 +127,7 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
     .select("*")
     .eq("analyzed", false)
     .order("published_at", { ascending: false })
-    .limit(30);
+    .limit(16);
 
   if (error || !articles?.length) {
     return { analyzed: 0, insights: 0 };
