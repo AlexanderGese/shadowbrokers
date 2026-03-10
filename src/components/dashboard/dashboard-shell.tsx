@@ -14,6 +14,7 @@ import { ArticlesFeed } from "./articles-feed";
 import { MarketSentimentChart } from "@/components/charts/market-sentiment-chart";
 import { MarketBriefing } from "./market-briefing";
 import { EarningsCalendar } from "./earnings-calendar";
+import { AccuracyDashboard } from "./accuracy-dashboard";
 import { IndexBar } from "./index-bar";
 import type { TickerSummary, Article, Analysis } from "@/lib/types";
 
@@ -36,7 +37,7 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
     window.scrollTo(0, 0);
   }, []);
 
-  const TAB_ORDER: DashboardTab[] = ["OVERVIEW", "TICKERS", "NEWS", "CHARTS", "BRIEFING", "EARNINGS"];
+  const TAB_ORDER: DashboardTab[] = ["OVERVIEW", "TICKERS", "NEWS", "CHARTS", "BRIEFING", "EARNINGS", "ACCURACY"];
 
   const handleSwipeLeft = useCallback(() => {
     const idx = TAB_ORDER.indexOf(activeTab);
@@ -72,6 +73,9 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
           break;
         case "6":
           handleTabChange("EARNINGS");
+          break;
+        case "7":
+          handleTabChange("ACCURACY");
           break;
         case "c":
         case "C":
@@ -124,6 +128,10 @@ export function DashboardShell({ tickers, articles, totalArticleCount }: Dashboa
 
       {activeTab === "EARNINGS" && (
         <EarningsCalendar />
+      )}
+
+      {activeTab === "ACCURACY" && (
+        <AccuracyDashboard />
       )}
       </div>
       </SwipeContainer>
