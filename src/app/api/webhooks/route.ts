@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { webhook_url, notify_alerts, notify_briefings, notify_danger, notify_high_confidence } = body;
+  const { webhook_url, notify_alerts, notify_briefings, notify_danger, notify_high_confidence, notify_accuracy_report, notify_portfolio } = body;
 
   if (!webhook_url) {
     return NextResponse.json({ error: "webhook_url required" }, { status: 400 });
@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
       notify_briefings: notify_briefings ?? true,
       notify_danger: notify_danger ?? true,
       notify_high_confidence: notify_high_confidence ?? false,
+      notify_accuracy_report: notify_accuracy_report ?? false,
+      notify_portfolio: notify_portfolio ?? false,
     }, { onConflict: "user_id" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

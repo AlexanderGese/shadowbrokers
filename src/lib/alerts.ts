@@ -2,6 +2,8 @@ import { createServerClient } from "./supabase/server";
 import { sendDiscordAlert } from "./discord";
 import { notifyAlertTriggered } from "./discord-webhooks";
 import { sendPushToUser } from "./web-push";
+import { notifyTelegramAlert } from "./telegram";
+import { notifyCustomWebhookAlert } from "./custom-webhooks";
 
 export async function checkAndTriggerAlerts(): Promise<number> {
   const supabase = createServerClient();
@@ -135,6 +137,20 @@ export async function checkAndTriggerAlerts(): Promise<number> {
       });
     } catch {
       // Don't block pipeline on push errors
+    }
+
+    // Send Telegram notification
+    try {
+      await notifyTelegramAlert(alert.user_id, alert.ticker, alert.condition, notifBody);
+    } catch {
+      // Don't block pipeline on Telegram errors
+    }
+
+    // Send custom webhook notifications
+    try {
+      await notifyCustomWebhookAlert(alert.user_id, alert.ticker, alert.condition, notifBody);
+    } catch {
+      // Don't block pipeline on custom webhook errors
     }
 
     // Update last triggered

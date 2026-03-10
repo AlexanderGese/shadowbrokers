@@ -26,6 +26,7 @@ CREATE TABLE analyses (
   reasoning TEXT NOT NULL,
   predicted_direction TEXT NOT NULL CHECK (predicted_direction IN ('up', 'flat', 'down')),
   predicted_magnitude TEXT NOT NULL CHECK (predicted_magnitude IN ('low', 'medium', 'high')),
+  price_at_prediction FLOAT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

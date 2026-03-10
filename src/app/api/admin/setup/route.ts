@@ -22,6 +22,8 @@ const SETUP_SQL = `
     notify_briefings boolean NOT NULL DEFAULT true,
     notify_danger boolean NOT NULL DEFAULT true,
     notify_high_confidence boolean NOT NULL DEFAULT false,
+    notify_accuracy_report boolean NOT NULL DEFAULT false,
+    notify_portfolio boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   );
@@ -36,6 +38,47 @@ const SETUP_SQL = `
   );
   CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions (user_id);
   CREATE INDEX IF NOT EXISTS idx_push_subs_endpoint ON push_subscriptions (endpoint);
+
+  CREATE TABLE IF NOT EXISTS user_telegram (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    chat_id bigint NOT NULL,
+    linked_at timestamptz NOT NULL DEFAULT now(),
+    notify_alerts boolean NOT NULL DEFAULT true,
+    notify_briefings boolean NOT NULL DEFAULT true,
+    notify_danger boolean NOT NULL DEFAULT true,
+    notify_high_confidence boolean NOT NULL DEFAULT false,
+    notify_accuracy_report boolean NOT NULL DEFAULT false,
+    notify_portfolio boolean NOT NULL DEFAULT false
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_telegram_user ON user_telegram (user_id);
+  CREATE INDEX IF NOT EXISTS idx_user_telegram_chat ON user_telegram (chat_id);
+
+  CREATE TABLE IF NOT EXISTS telegram_link_tokens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    token varchar(32) NOT NULL UNIQUE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz NOT NULL DEFAULT (now() + interval '15 minutes')
+  );
+
+  CREATE TABLE IF NOT EXISTS user_custom_webhooks (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL,
+    name varchar(64) NOT NULL DEFAULT 'My Webhook',
+    webhook_url text NOT NULL,
+    secret varchar(128) NOT NULL,
+    custom_headers jsonb DEFAULT '{}',
+    notify_alerts boolean NOT NULL DEFAULT true,
+    notify_briefings boolean NOT NULL DEFAULT true,
+    notify_danger boolean NOT NULL DEFAULT true,
+    notify_high_confidence boolean NOT NULL DEFAULT false,
+    notify_accuracy_report boolean NOT NULL DEFAULT false,
+    notify_portfolio boolean NOT NULL DEFAULT false,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(user_id, webhook_url)
+  );
+  CREATE INDEX IF NOT EXISTS idx_custom_webhooks_user ON user_custom_webhooks (user_id);
 `;
 
 export async function POST() {

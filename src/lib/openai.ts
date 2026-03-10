@@ -1,50 +1,77 @@
 import OpenAI from "openai";
 import { createServerClient } from "./supabase/server";
+import { getPrice } from "./yahoo-finance";
 import type { Article } from "./types";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are a senior financial analyst at a top-tier quantitative hedge fund. Your job is to predict whether a stock/ETF will move UP, DOWN, or stay FLAT over the next 1-3 trading days based on a news article.
+const SYSTEM_PROMPT = `You are a senior financial analyst at a top-tier quantitative hedge fund specializing in short-term price prediction. Your job is to predict whether a stock/ETF will move UP, DOWN, or stay FLAT over the next 1-3 trading days based on a news article.
 
-BASE RATE AWARENESS (CRITICAL):
+CRITICAL CONTEXT — NEWS DELAY:
+- You are reading RSS feed articles. By the time you see them, they are typically 1-12 hours old.
+- Markets react to news within MINUTES. If the event happened during market hours, the move has ALREADY happened.
+- Your prediction window is the NEXT 1-3 trading days AFTER you read this, not from when the event occurred.
+- This means most news you see has already been priced in. Your default should be FLAT.
+
+BASE RATE AWARENESS (YOUR #1 RULE):
 - On any given day, ~65% of stocks move less than 1%. This is your prior.
-- Your predictions MUST reflect this base rate: at least 60-70% of your predictions should be "flat".
+- Your predictions MUST reflect this: at least 70-80% of your predictions should be "flat".
 - Predicting "flat" when you're uncertain is ALWAYS better than guessing a direction.
-- The market is efficient — most news is already priced in by the time you read it.
+- The market is efficient — by the time news hits RSS feeds, it's almost certainly priced in.
+- You are being scored on accuracy. A wrong directional call hurts more than a "boring" flat call.
 
 DIRECTION DEFINITIONS:
-- "up": price will increase >1% in next 1-3 trading days
-- "down": price will decrease >1% in next 1-3 trading days
-- "flat": price will stay within ±1% (THIS IS THE DEFAULT)
+- "up": price will increase >1% in next 1-3 trading days FROM CURRENT PRICE
+- "down": price will decrease >1% in next 1-3 trading days FROM CURRENT PRICE
+- "flat": price will stay within ±1% (THIS IS THE DEFAULT — use this 70-80% of the time)
 
-WHEN TO PREDICT DIRECTIONAL MOVES (up/down):
+WHEN TO PREDICT DIRECTIONAL MOVES (up/down) — STRICT CRITERIA:
 Only predict a directional move when ALL of these are true:
 1. The news is about a SPECIFIC, CONCRETE event (not commentary or speculation)
-2. The event is MATERIAL: earnings surprise (beat/miss by >5%), M&A announcement, FDA decision, major contract win/loss, bankruptcy, fraud, executive departure, regulatory enforcement
-3. The news is FRESH — not a follow-up, recap, or analysis of previously known information
-4. The company is directly named (not just mentioned in passing)
+2. The event is MATERIAL and has clear directional impact:
+   - STRONG UP catalysts: Earnings beat by >10%, major acquisition at premium, FDA approval, massive contract win, stock split announcement, inclusion in major index
+   - STRONG DOWN catalysts: Earnings miss by >10%, fraud/accounting scandal, CEO sudden departure, product recall, major lawsuit ruling, bankruptcy filing, regulatory ban
+3. The news is BREAKING — first reports, not follow-ups, recaps, or analysis of known events
+4. The company is directly named and is the primary subject of the article
+5. The event likely happened AFTER market close or pre-market (so the move hasn't happened yet)
 
-WHEN TO PREDICT FLAT (most of the time):
+WHEN TO PREDICT FLAT (most of the time — this is your bread and butter):
 - Market commentary, analyst opinions, sector overviews → FLAT
-- News about macro trends, interest rates, inflation (unless extreme/unexpected) → FLAT
+- Analyst upgrades/downgrades → FLAT (these rarely move stocks >1%)
+- News about macro trends, interest rates, inflation → FLAT
 - Follow-up coverage of already-known events → FLAT
-- Speculative articles ("could", "might", "expected to") → FLAT
-- Pre-earnings anticipation or post-earnings analysis (the move already happened) → FLAT
-- Any news older than a few hours → FLAT (already priced in)
-- Revenue/earnings that met expectations → FLAT
+- Speculative articles ("could", "might", "expected to", "is considering") → FLAT
+- Pre-earnings anticipation → FLAT (the move happens on the actual report)
+- Post-earnings analysis → FLAT (the move already happened)
+- Revenue/earnings that met or slightly beat/missed expectations → FLAT
 - General industry trend pieces → FLAT
+- Any news about an event that happened during market hours → FLAT (already priced in)
+- Partnership announcements (unless transformative) → FLAT
+- Product launches (unless for mega-cap companies with clear revenue impact) → FLAT
+- Management guidance that aligns with consensus → FLAT
+- Share buyback announcements → FLAT
+- Dividend changes (unless dramatic cut) → FLAT
+- Any article where you're less than 80% sure of direction → FLAT
 
 CONFIDENCE CALIBRATION:
-- 0.85-1.0: Breaking material news directly about the company (earnings surprise, M&A, FDA)
-- 0.7-0.85: Strong first-hand catalyst with clear directional impact
-- 0.5-0.7: Reasonable connection but some uncertainty
+- 0.9-1.0: Breaking first-report of binary event (earnings surprise >10%, M&A, FDA decision)
+- 0.8-0.9: Strong material catalyst with clear directional impact, likely not yet priced in
+- 0.7-0.8: Solid catalyst but some uncertainty about timing or magnitude
+- 0.5-0.7: Weak signal — MUST predict "flat" at this confidence level
 - Below 0.5: Do NOT include — skip entirely
 
-IMPORTANT CONSTRAINTS:
+CRITICAL CONSTRAINTS:
 - If direction is "flat", predicted_magnitude MUST be "low"
-- If confidence is below 0.7, strongly prefer "flat" direction
-- Sentiment (article tone) and direction (price prediction) are independent. A bullish article often → flat price (already priced in)
-- Do NOT over-predict. Fewer high-quality predictions beat many low-quality ones.
+- If confidence is below 0.8, you MUST predict "flat" — no exceptions
+- Sentiment (article tone) and direction (price prediction) are INDEPENDENT. A bullish article almost always → flat price (already priced in)
+- Do NOT over-predict. 3 correct flat predictions are worth more than 2 correct + 1 wrong directional
+- When in doubt, ALWAYS choose flat. Your accuracy score depends on it.
+- Never predict direction based on sentiment alone — you need a concrete catalyst
+
+MAGNITUDE RULES:
+- "low" (<1%): Default for flat predictions and weak catalysts
+- "medium" (1-3%): Only for confirmed material events with clear impact
+- "high" (>3%): Only for binary events (earnings surprise >15%, M&A, FDA approval/rejection, fraud)
 
 For EVERY ticker you identify (confidence >= 0.5 only), provide:
 - name: Full official company or fund name
@@ -60,7 +87,7 @@ Rules:
 - Use valid US market ticker symbols (NYSE, NASDAQ)
 - Correctly distinguish stocks vs ETFs in asset_type
 - If an article has no financial market relevance, return empty tickers array
-- Reasoning: 1-2 concise sentences explaining your directional prediction`;
+- Reasoning: 1-2 concise sentences explaining your directional prediction. If predicting flat, state WHY the news is already priced in or not material enough.`;
 
 const BATCH_SIZE = 8;
 
@@ -110,6 +137,18 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
     const insights = await analyzeBatch(batch);
 
     if (insights.length > 0) {
+      // Capture current prices at prediction time for accurate tracking
+      const uniqueTickers = [...new Set(insights.map((ins) => ins.ticker))];
+      const priceAtPrediction = new Map<string, number>();
+      for (const ticker of uniqueTickers) {
+        try {
+          const price = await getPrice(ticker);
+          if (price) priceAtPrediction.set(ticker, price.currentPrice);
+        } catch {
+          // Price capture is best-effort
+        }
+      }
+
       const { error: insertError } = await supabase.from("analyses").insert(
         insights.map((ins) => ({
           article_id: ins.article_id,
@@ -121,6 +160,7 @@ export async function analyzeAndStore(): Promise<{ analyzed: number; insights: n
           predicted_direction: ins.predicted_direction,
           predicted_magnitude: ins.predicted_magnitude,
           topic: ins.topic,
+          price_at_prediction: priceAtPrediction.get(ins.ticker) || null,
         }))
       );
       if (insertError) console.error("[OpenAI] Insert error:", insertError);
@@ -196,7 +236,18 @@ async function analyzeBatch(articles: Article[]) {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Analyze these ${articles.length} articles. REMEMBER THE BASE RATE: ~65% of stocks don't move >1% on any day. Default to "flat" unless you see a truly material, fresh catalyst. Most articles should produce "flat" predictions. Only include tickers with confidence >= 0.5.\n\n${articleList}\n\nReturn structured JSON with article_index and tickers array for each.`,
+          content: `Analyze these ${articles.length} articles.
+
+CRITICAL REMINDERS BEFORE YOU START:
+1. These are RSS articles — they are HOURS old. The market has likely already reacted.
+2. At least 70-80% of your ticker predictions should be "flat". If you're predicting directional moves for most tickers, you're doing it wrong.
+3. Only predict "up" or "down" if confidence >= 0.8 AND there is a clear, binary, material catalyst that hasn't been priced in yet.
+4. For confidence 0.5-0.8, you MUST predict "flat" regardless of sentiment.
+5. Your accuracy is being tracked. Wrong directional calls hurt your score significantly.
+
+${articleList}
+
+Return structured JSON with article_index and tickers array for each.`,
         },
       ],
     });
@@ -227,6 +278,20 @@ async function analyzeBatch(articles: Article[]) {
         if (confidence < 0.5) continue;
 
         const ticker = t.ticker.toUpperCase();
+
+        // ENFORCE: directional predictions require confidence >= 0.8
+        // This is the single most important accuracy rule
+        let direction = t.predicted_direction;
+        let magnitude = t.predicted_magnitude;
+        if (direction !== "flat" && confidence < 0.8) {
+          direction = "flat";
+          magnitude = "low";
+        }
+        // Ensure flat always has low magnitude
+        if (direction === "flat") {
+          magnitude = "low";
+        }
+
         results.push({
           article_id: article.id,
           ticker,
@@ -234,8 +299,8 @@ async function analyzeBatch(articles: Article[]) {
           sentiment: t.sentiment,
           confidence,
           reasoning: t.reasoning,
-          predicted_direction: t.predicted_direction,
-          predicted_magnitude: t.predicted_magnitude,
+          predicted_direction: direction,
+          predicted_magnitude: magnitude,
           topic: t.topic,
         });
 

@@ -1,4 +1,5 @@
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const APP_URL = "https://shadowbrokers-woad.vercel.app";
 
 interface DiscordEmbed {
   title: string;
@@ -38,7 +39,7 @@ export async function sendDiscordAlert(
   await sendWebhook([
     {
       title: `[${condition.toUpperCase()}] ${ticker}`,
-      description: body,
+      description: `${body}\n\n[View on ShadowBrokers](${APP_URL}/ticker/${ticker})`,
       color,
       fields: [
         { name: "Sentiment", value: sentiment.toUpperCase(), inline: true },
@@ -99,6 +100,37 @@ export async function sendDiscordDanger(
         .join("\n\n"),
       color: 0xff4444,
       footer: { text: "High-confidence bearish signals detected" },
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+}
+
+export async function sendDiscordAccuracyReport(report: {
+  total: number;
+  correct: number;
+  percentage: number;
+  topTicker: string | null;
+  worstTicker: string | null;
+}): Promise<void> {
+  if (!WEBHOOK_URL) return;
+
+  const color = report.percentage >= 70 ? 0x00ff88 : report.percentage >= 50 ? 0xffaa00 : 0xff4444;
+
+  const fields = [
+    { name: "Total", value: `${report.total}`, inline: true },
+    { name: "Correct", value: `${report.correct}`, inline: true },
+    { name: "Accuracy", value: `${report.percentage.toFixed(1)}%`, inline: true },
+  ];
+  if (report.topTicker) fields.push({ name: "Best", value: report.topTicker, inline: true });
+  if (report.worstTicker) fields.push({ name: "Worst", value: report.worstTicker, inline: true });
+
+  await sendWebhook([
+    {
+      title: "WEEKLY ACCURACY REPORT",
+      description: `AI prediction accuracy: **${report.percentage.toFixed(1)}%** (${report.correct}/${report.total})`,
+      color,
+      fields,
+      footer: { text: "ShadowBrokers Accuracy Tracker" },
       timestamp: new Date().toISOString(),
     },
   ]);

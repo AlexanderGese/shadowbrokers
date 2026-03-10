@@ -3,6 +3,8 @@ import { createServerClient } from "./supabase/server";
 import { sendDiscordBriefing, sendDiscordDanger } from "./discord";
 import { notifyBriefingGenerated, notifyDangerSignal } from "./discord-webhooks";
 import { sendPushToAllUsers } from "./web-push";
+import { notifyTelegramBriefing, notifyTelegramDanger } from "./telegram";
+import { notifyCustomWebhookBriefing, notifyCustomWebhookDanger } from "./custom-webhooks";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -152,6 +154,34 @@ export async function generateBriefing(): Promise<BriefingResult | null> {
     });
   } catch {
     // Don't block pipeline on push errors
+  }
+
+  // Send Telegram notifications
+  try {
+    await notifyTelegramBriefing(
+      result.summary,
+      result.market_bias,
+      result.danger_tickers.map((d) => d.ticker)
+    );
+    for (const dt of result.danger_tickers) {
+      await notifyTelegramDanger(dt.ticker, dt.reasoning, dt.confidence);
+    }
+  } catch {
+    // Don't block pipeline on Telegram errors
+  }
+
+  // Send custom webhook notifications
+  try {
+    await notifyCustomWebhookBriefing(
+      result.summary,
+      result.market_bias,
+      result.danger_tickers.map((d) => d.ticker)
+    );
+    for (const dt of result.danger_tickers) {
+      await notifyCustomWebhookDanger(dt.ticker, dt.reasoning, dt.confidence);
+    }
+  } catch {
+    // Don't block pipeline on custom webhook errors
   }
 
   return result;

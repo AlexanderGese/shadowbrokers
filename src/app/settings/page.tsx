@@ -12,6 +12,33 @@ interface WebhookConfig {
   notify_briefings: boolean;
   notify_danger: boolean;
   notify_high_confidence: boolean;
+  notify_accuracy_report: boolean;
+  notify_portfolio: boolean;
+}
+
+interface TelegramConfig {
+  chat_id: number;
+  linked_at: string;
+  notify_alerts: boolean;
+  notify_briefings: boolean;
+  notify_danger: boolean;
+  notify_high_confidence: boolean;
+  notify_accuracy_report: boolean;
+  notify_portfolio: boolean;
+}
+
+interface CustomWebhook {
+  id: string;
+  name: string;
+  webhook_url: string;
+  secret?: string;
+  notify_alerts: boolean;
+  notify_briefings: boolean;
+  notify_danger: boolean;
+  notify_high_confidence: boolean;
+  notify_accuracy_report: boolean;
+  notify_portfolio: boolean;
+  created_at: string;
 }
 
 export default function SettingsPage() {
@@ -35,14 +62,32 @@ export default function SettingsPage() {
     notify_briefings: true,
     notify_danger: true,
     notify_high_confidence: false,
+    notify_accuracy_report: false,
+    notify_portfolio: false,
   });
   const [hasExisting, setHasExisting] = useState(false);
+
+  // Telegram state
+  const [telegram, setTelegram] = useState<TelegramConfig | null>(null);
+  const [telegramToken, setTelegramToken] = useState<string | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramMessage, setTelegramMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Custom webhooks state
+  const [customWebhooks, setCustomWebhooks] = useState<CustomWebhook[]>([]);
+  const [showAddWebhook, setShowAddWebhook] = useState(false);
+  const [newWebhookName, setNewWebhookName] = useState("My Webhook");
+  const [newWebhookUrl, setNewWebhookUrl] = useState("");
+  const [customMessage, setCustomMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [customSaving, setCustomSaving] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
     loadProfile();
     loadWebhook();
+    loadTelegram();
+    loadCustomWebhooks();
   }, [user, authLoading, router]);
 
   async function loadProfile() {
@@ -93,6 +138,8 @@ export default function SettingsPage() {
           notify_briefings: data.webhook.notify_briefings ?? true,
           notify_danger: data.webhook.notify_danger ?? true,
           notify_high_confidence: data.webhook.notify_high_confidence ?? false,
+          notify_accuracy_report: data.webhook.notify_accuracy_report ?? false,
+          notify_portfolio: data.webhook.notify_portfolio ?? false,
         });
         setHasExisting(true);
       }
@@ -155,11 +202,160 @@ export default function SettingsPage() {
         notify_briefings: true,
         notify_danger: true,
         notify_high_confidence: false,
+        notify_accuracy_report: false,
+        notify_portfolio: false,
       });
       setHasExisting(false);
       setMessage({ type: "ok", text: "Webhook removed" });
     } catch {
       setMessage({ type: "err", text: "Failed to remove" });
+    }
+  }
+
+  // --- Telegram ---
+  async function loadTelegram() {
+    try {
+      const res = await fetch("/api/telegram/connect");
+      const data = await res.json();
+      if (data.telegram) setTelegram(data.telegram);
+    } catch { /* ignore */ }
+  }
+
+  async function generateTelegramToken() {
+    setTelegramMessage(null);
+    setTelegramLoading(true);
+    try {
+      const res = await fetch("/api/telegram/connect", { method: "POST" });
+      const data = await res.json();
+      if (data.token) {
+        setTelegramToken(data.token);
+        setTelegramMessage({ type: "ok", text: "Token generated — send it to the bot within 15 minutes" });
+      } else {
+        setTelegramMessage({ type: "err", text: data.error || "Failed to generate token" });
+      }
+    } catch {
+      setTelegramMessage({ type: "err", text: "Network error" });
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
+
+  async function disconnectTelegram() {
+    setTelegramMessage(null);
+    try {
+      await fetch("/api/telegram/connect", { method: "DELETE" });
+      setTelegram(null);
+      setTelegramToken(null);
+      setTelegramMessage({ type: "ok", text: "Telegram disconnected" });
+    } catch {
+      setTelegramMessage({ type: "err", text: "Failed to disconnect" });
+    }
+  }
+
+  async function updateTelegramSetting(field: string, value: boolean) {
+    if (!telegram) return;
+    const updated = { ...telegram, [field]: value };
+    setTelegram(updated);
+    try {
+      await fetch("/api/telegram/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+    } catch { /* revert on error could be added */ }
+  }
+
+  async function testTelegram() {
+    setTelegramMessage(null);
+    setTelegramLoading(true);
+    try {
+      const res = await fetch("/api/telegram/test", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setTelegramMessage({ type: "ok", text: "Test message sent — check Telegram!" });
+      } else {
+        setTelegramMessage({ type: "err", text: data.error || "Test failed" });
+      }
+    } catch {
+      setTelegramMessage({ type: "err", text: "Network error" });
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
+
+  // --- Custom Webhooks ---
+  async function loadCustomWebhooks() {
+    try {
+      const res = await fetch("/api/custom-webhooks");
+      const data = await res.json();
+      if (data.webhooks) setCustomWebhooks(data.webhooks);
+    } catch { /* ignore */ }
+  }
+
+  async function addCustomWebhook(e: React.FormEvent) {
+    e.preventDefault();
+    setCustomMessage(null);
+    setCustomSaving(true);
+    try {
+      const res = await fetch("/api/custom-webhooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newWebhookName, webhook_url: newWebhookUrl }),
+      });
+      const data = await res.json();
+      if (data.success && data.webhook) {
+        setCustomWebhooks([...customWebhooks, { ...data.webhook, notify_alerts: true, notify_briefings: true, notify_danger: true, notify_high_confidence: false, notify_accuracy_report: false, notify_portfolio: false }]);
+        setShowAddWebhook(false);
+        setNewWebhookName("My Webhook");
+        setNewWebhookUrl("");
+        setCustomMessage({ type: "ok", text: `Webhook created. Secret: ${data.webhook.secret}` });
+      } else {
+        setCustomMessage({ type: "err", text: data.error || "Failed to create" });
+      }
+    } catch {
+      setCustomMessage({ type: "err", text: "Network error" });
+    } finally {
+      setCustomSaving(false);
+    }
+  }
+
+  async function updateCustomWebhook(id: string, field: string, value: boolean) {
+    setCustomWebhooks(customWebhooks.map((w) => w.id === id ? { ...w, [field]: value } : w));
+    try {
+      await fetch("/api/custom-webhooks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, [field]: value }),
+      });
+    } catch { /* ignore */ }
+  }
+
+  async function testCustomWebhook(id: string) {
+    setCustomMessage(null);
+    try {
+      const res = await fetch("/api/custom-webhooks/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhook_id: id }),
+      });
+      const data = await res.json();
+      setCustomMessage(data.success
+        ? { type: "ok", text: "Test payload sent!" }
+        : { type: "err", text: data.error || "Test failed" }
+      );
+    } catch {
+      setCustomMessage({ type: "err", text: "Network error" });
+    }
+  }
+
+  async function removeCustomWebhook(id: string) {
+    setCustomMessage(null);
+    try {
+      await fetch(`/api/custom-webhooks?id=${id}`, { method: "DELETE" });
+      setCustomWebhooks(customWebhooks.filter((w) => w.id !== id));
+      setCustomMessage({ type: "ok", text: "Webhook removed" });
+    } catch {
+      setCustomMessage({ type: "err", text: "Failed to remove" });
     }
   }
 
@@ -340,6 +536,18 @@ export default function SettingsPage() {
                     checked={webhook.notify_high_confidence}
                     onChange={(v) => setWebhook({ ...webhook, notify_high_confidence: v })}
                   />
+                  <Toggle
+                    label="ACCURACY REPORTS"
+                    description="Weekly AI prediction accuracy summary"
+                    checked={webhook.notify_accuracy_report}
+                    onChange={(v) => setWebhook({ ...webhook, notify_accuracy_report: v })}
+                  />
+                  <Toggle
+                    label="PORTFOLIO ALERTS"
+                    description="Significant price movements on your portfolio positions"
+                    checked={webhook.notify_portfolio}
+                    onChange={(v) => setWebhook({ ...webhook, notify_portfolio: v })}
+                  />
                 </div>
               </div>
 
@@ -379,6 +587,232 @@ export default function SettingsPage() {
                 </div>
               )}
             </form>
+          </div>
+        </div>
+
+        {/* Telegram Section */}
+        <div className="border border-card-border bg-card-bg">
+          <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+            <span className="text-[10px] text-muted tracking-widest">TELEGRAM</span>
+            <span className="text-[9px] px-2 py-0.5 bg-accent/10 text-accent border border-accent/20">ULTRA</span>
+          </div>
+
+          <div className="p-6">
+            <p className="text-[10px] text-muted leading-relaxed mb-6">
+              Connect your Telegram account to receive alerts, briefings, and danger signals
+              via the ShadowBrokers bot.
+            </p>
+
+            {telegram ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 border border-bullish/20 bg-bullish/5">
+                  <div className="w-2 h-2 rounded-full bg-bullish animate-pulse" />
+                  <div>
+                    <div className="text-[10px] text-bullish tracking-widest">CONNECTED</div>
+                    <div className="text-[9px] text-muted">
+                      Linked {new Date(telegram.linked_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-muted tracking-widest block mb-2">NOTIFICATIONS</label>
+                  <div className="space-y-2">
+                    <Toggle label="ALERT TRIGGERS" description="Get notified when your ticker alerts fire" checked={telegram.notify_alerts} onChange={(v) => updateTelegramSetting("notify_alerts", v)} />
+                    <Toggle label="DAILY BRIEFINGS" description="Receive the daily market briefing summary" checked={telegram.notify_briefings} onChange={(v) => updateTelegramSetting("notify_briefings", v)} />
+                    <Toggle label="DANGER SIGNALS" description="High-confidence bearish warnings" checked={telegram.notify_danger} onChange={(v) => updateTelegramSetting("notify_danger", v)} />
+                    <Toggle label="HIGH CONFIDENCE PREDICTIONS" description="80%+ confidence directional moves" checked={telegram.notify_high_confidence} onChange={(v) => updateTelegramSetting("notify_high_confidence", v)} />
+                    <Toggle label="ACCURACY REPORTS" description="Weekly prediction accuracy summary" checked={telegram.notify_accuracy_report} onChange={(v) => updateTelegramSetting("notify_accuracy_report", v)} />
+                    <Toggle label="PORTFOLIO ALERTS" description="Significant portfolio position changes" checked={telegram.notify_portfolio} onChange={(v) => updateTelegramSetting("notify_portfolio", v)} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={testTelegram}
+                    disabled={telegramLoading}
+                    className="text-[10px] px-4 py-2 border border-card-border text-muted hover:text-foreground transition-colors tracking-widest disabled:opacity-50"
+                  >
+                    {telegramLoading ? "SENDING..." : "TEST"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={disconnectTelegram}
+                    className="text-[10px] px-4 py-2 border border-bearish/30 text-bearish/70 hover:text-bearish hover:border-bearish/50 transition-colors tracking-widest"
+                  >
+                    DISCONNECT
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {telegramToken ? (
+                  <div className="space-y-3">
+                    <div className="p-4 border border-accent/30 bg-accent/5">
+                      <div className="text-[10px] text-muted tracking-widest mb-2">YOUR LINK TOKEN</div>
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm text-accent font-bold tracking-[0.3em]">{telegramToken}</code>
+                        <button
+                          type="button"
+                          onClick={() => { navigator.clipboard.writeText(telegramToken); setTelegramMessage({ type: "ok", text: "Token copied!" }); }}
+                          className="text-[9px] px-2 py-1 border border-card-border text-muted hover:text-foreground transition-colors"
+                        >
+                          COPY
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-muted leading-relaxed">
+                      1. Open <span className="text-accent">@ShadowBrokersBot</span> on Telegram<br />
+                      2. Send <span className="text-accent">/start</span> then paste the token above<br />
+                      3. Your account will be linked automatically
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setTelegramToken(null); loadTelegram(); }}
+                      className="text-[10px] text-muted hover:text-foreground transition-colors"
+                    >
+                      Already sent it? Click to refresh status
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={generateTelegramToken}
+                    disabled={telegramLoading}
+                    className="text-[10px] px-5 py-2 bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 transition-colors tracking-widest disabled:opacity-50"
+                  >
+                    {telegramLoading ? "GENERATING..." : "GENERATE LINK TOKEN"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {telegramMessage && (
+              <div className={`text-[10px] mt-4 ${telegramMessage.type === "ok" ? "text-bullish" : "text-bearish"}`}>
+                [{telegramMessage.type === "ok" ? "OK" : "ERR"}] {telegramMessage.text}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Custom Webhooks Section */}
+        <div className="border border-card-border bg-card-bg">
+          <div className="px-4 py-2 border-b border-card-border flex items-center justify-between">
+            <span className="text-[10px] text-muted tracking-widest">CUSTOM WEBHOOKS</span>
+            <span className="text-[9px] px-2 py-0.5 bg-accent/10 text-accent border border-accent/20">ULTRA</span>
+          </div>
+
+          <div className="p-6">
+            <p className="text-[10px] text-muted leading-relaxed mb-6">
+              Send notifications to any HTTP endpoint — Slack, Zapier, Make, n8n, or your own server.
+              Payloads are signed with HMAC-SHA256 for verification.
+            </p>
+
+            {/* Existing webhooks */}
+            {customWebhooks.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {customWebhooks.map((cw) => (
+                  <div key={cw.id} className="border border-card-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] text-foreground tracking-widest font-bold">{cw.name}</div>
+                        <div className="text-[9px] text-muted mt-0.5">
+                          {cw.webhook_url.replace(/^(https:\/\/[^/]+).*/, "$1/...")}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => testCustomWebhook(cw.id)}
+                          className="text-[9px] px-3 py-1 border border-card-border text-muted hover:text-foreground transition-colors tracking-widest"
+                        >
+                          TEST
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCustomWebhook(cw.id)}
+                          className="text-[9px] px-3 py-1 border border-bearish/30 text-bearish/70 hover:text-bearish transition-colors tracking-widest"
+                        >
+                          REMOVE
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Toggle label="ALERTS" description="Alert triggers" checked={cw.notify_alerts} onChange={(v) => updateCustomWebhook(cw.id, "notify_alerts", v)} />
+                      <Toggle label="BRIEFINGS" description="Daily briefing" checked={cw.notify_briefings} onChange={(v) => updateCustomWebhook(cw.id, "notify_briefings", v)} />
+                      <Toggle label="DANGER" description="Danger signals" checked={cw.notify_danger} onChange={(v) => updateCustomWebhook(cw.id, "notify_danger", v)} />
+                      <Toggle label="HIGH CONFIDENCE" description="80%+ predictions" checked={cw.notify_high_confidence} onChange={(v) => updateCustomWebhook(cw.id, "notify_high_confidence", v)} />
+                      <Toggle label="ACCURACY" description="Weekly reports" checked={cw.notify_accuracy_report} onChange={(v) => updateCustomWebhook(cw.id, "notify_accuracy_report", v)} />
+                      <Toggle label="PORTFOLIO" description="Position alerts" checked={cw.notify_portfolio} onChange={(v) => updateCustomWebhook(cw.id, "notify_portfolio", v)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add webhook form */}
+            {showAddWebhook ? (
+              <form onSubmit={addCustomWebhook} className="space-y-3 border border-card-border p-4">
+                <div>
+                  <label className="text-[10px] text-muted tracking-widest block mb-1">NAME</label>
+                  <input
+                    type="text"
+                    value={newWebhookName}
+                    onChange={(e) => setNewWebhookName(e.target.value)}
+                    placeholder="My Webhook"
+                    maxLength={64}
+                    required
+                    className="w-full bg-background border border-card-border text-xs text-foreground py-2 px-3 focus:outline-none placeholder:text-muted/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted tracking-widest block mb-1">ENDPOINT URL</label>
+                  <input
+                    type="url"
+                    value={newWebhookUrl}
+                    onChange={(e) => setNewWebhookUrl(e.target.value)}
+                    placeholder="https://hooks.slack.com/services/..."
+                    required
+                    className="w-full bg-background border border-card-border text-xs text-foreground py-2 px-3 focus:outline-none placeholder:text-muted/40"
+                  />
+                  <div className="text-[9px] text-muted mt-1">
+                    Works with Slack, Zapier, Make, n8n, or any HTTPS endpoint
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={customSaving}
+                    className="text-[10px] px-5 py-2 bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 transition-colors tracking-widest disabled:opacity-50"
+                  >
+                    {customSaving ? "CREATING..." : "CREATE WEBHOOK"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddWebhook(false)}
+                    className="text-[10px] px-4 py-2 border border-card-border text-muted hover:text-foreground transition-colors tracking-widest"
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAddWebhook(true)}
+                className="text-[10px] px-5 py-2 bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 transition-colors tracking-widest"
+              >
+                + ADD WEBHOOK
+              </button>
+            )}
+
+            {customMessage && (
+              <div className={`text-[10px] mt-4 ${customMessage.type === "ok" ? "text-bullish" : "text-bearish"}`}>
+                [{customMessage.type === "ok" ? "OK" : "ERR"}] {customMessage.text}
+              </div>
+            )}
           </div>
         </div>
       </div>
