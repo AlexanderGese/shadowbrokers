@@ -6,34 +6,81 @@ on:
   workflow_dispatch:
 
 jobs:
-  trigger-analysis:
+  phase1-analyze:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger cron endpoint
+      - name: RSS fetch + AI analysis
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          MAX_RETRIES=3
-          RETRY_DELAY=10
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Attempt $i of $MAX_RETRIES..."
-            HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
-              -H "Authorization: Bearer $CRON_SECRET" \
-              "$DEPLOY_URL/api/cron/analyze" \
-              --max-time 120)
-            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-              echo "Success (HTTP $HTTP_CODE)"
-              cat /tmp/response.json
-              exit 0
-            fi
-            echo "Failed (HTTP $HTTP_CODE)"
-            cat /tmp/response.json 2>/dev/null || true
-            if [ "$i" -lt "$MAX_RETRIES" ]; then
-              echo "Retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
-              RETRY_DELAY=$((RETRY_DELAY * 2))
-            fi
-          done
-          echo "All $MAX_RETRIES attempts failed"
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/analyze" \
+            --max-time 65)
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null || true
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            exit 0
+          fi
+          exit 1
+
+  phase2-alerts:
+    needs: phase1-analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check alerts + notifications
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/alerts" \
+            --max-time 65)
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null || true
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            exit 0
+          fi
+          exit 1
+
+  phase2-briefing:
+    needs: phase1-analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate market briefing
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/briefing" \
+            --max-time 65)
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null || true
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            exit 0
+          fi
+          exit 1
+
+  phase2-accuracy:
+    needs: phase1-analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check prediction accuracy
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/accuracy" \
+            --max-time 65)
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null || true
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            exit 0
+          fi
           exit 1

@@ -4,7 +4,7 @@ import { RSS_FEEDS } from "./config";
 import type { RSSArticle } from "./types";
 
 const parser = new Parser({
-  timeout: 15000,
+  timeout: 5000,
   maxRedirects: 3,
   headers: {
     "User-Agent": "ShadowBrokers/1.0 (Financial Analysis Bot)",
