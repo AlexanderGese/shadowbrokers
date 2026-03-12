@@ -2,12 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
+// NO httpOnly — Supabase browser client must read cookies via document.cookie
+// NO domain — let browser default to current host (safest cross-environment)
 const COOKIE_OPTIONS = {
-  domain: ".shadowbrokers.app",
   path: "/",
   sameSite: "lax" as const,
   secure: true,
-  httpOnly: true,
   maxAge: 60 * 60 * 24 * 30, // 30 days
 };
 

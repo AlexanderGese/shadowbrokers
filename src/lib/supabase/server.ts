@@ -2,12 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Must match middleware and browser client — NO httpOnly, NO domain override
 const COOKIE_OPTIONS = {
-  domain: ".shadowbrokers.app",
   path: "/",
   sameSite: "lax" as const,
   secure: true,
-  httpOnly: true,
   maxAge: 60 * 60 * 24 * 30, // 30 days
 };
 
