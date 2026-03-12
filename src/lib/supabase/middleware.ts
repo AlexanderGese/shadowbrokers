@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
+const COOKIE_OPTIONS = {
+  path: "/",
+  sameSite: "lax" as const,
+  secure: true,
+  // Don't set domain — let browser default to current host
+  // This works for both www.shadowbrokers.app and localhost
+};
+
 export async function updateSession(request: NextRequest): Promise<{ response: NextResponse; user: User | null }> {
   let response = NextResponse.next({ request });
 
@@ -19,7 +27,10 @@ export async function updateSession(request: NextRequest): Promise<{ response: N
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, {
+              ...options,
+              ...COOKIE_OPTIONS,
+            })
           );
         },
       },

@@ -2,6 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+const COOKIE_OPTIONS = {
+  path: "/",
+  sameSite: "lax" as const,
+  secure: true,
+};
+
 // Service role client - bypasses RLS, used for cron jobs and analysis pipeline
 export function createServerClient() {
   return createClient(
@@ -25,7 +31,10 @@ export async function createAuthClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              cookieStore.set(name, value, {
+                ...options,
+                ...COOKIE_OPTIONS,
+              });
             });
           } catch {
             // setAll can fail in Server Components (read-only), that's ok
