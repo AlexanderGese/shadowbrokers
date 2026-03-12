@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeAndStore } from "@/lib/openai";
+import { refreshTickerSummaries } from "@/lib/openai";
 
 export const maxDuration = 60;
 
-// OpenAI analysis only (RSS must be called first)
+// Refresh ticker summaries
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await analyzeAndStore();
-    return NextResponse.json({ success: true, ...result, timestamp: new Date().toISOString() });
+    await refreshTickerSummaries();
+    return NextResponse.json({ success: true, timestamp: new Date().toISOString() });
   } catch (e) {
-    console.error("[CRON] Analysis error:", e);
+    console.error("[CRON] Summaries error:", e);
     return NextResponse.json({ success: false, error: String(e) }, { status: 500 });
   }
 }

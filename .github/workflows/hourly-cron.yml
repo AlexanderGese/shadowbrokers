@@ -6,81 +6,76 @@ on:
   workflow_dispatch:
 
 jobs:
-  phase1-analyze:
+  step1-rss:
     runs-on: ubuntu-latest
     steps:
-      - name: RSS fetch + AI analysis
+      - name: Fetch RSS feeds
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$DEPLOY_URL/api/cron/analyze" \
-            --max-time 65)
+            "$DEPLOY_URL/api/cron/rss" --max-time 55)
           echo "HTTP $HTTP_CODE"
           cat /tmp/response.json 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            exit 0
-          fi
-          exit 1
+          [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]
 
-  phase2-alerts:
-    needs: phase1-analyze
+  step2-analyze:
+    needs: step1-rss
     runs-on: ubuntu-latest
     steps:
-      - name: Check alerts + notifications
+      - name: AI analysis
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$DEPLOY_URL/api/cron/alerts" \
-            --max-time 65)
+            "$DEPLOY_URL/api/cron/analyze" --max-time 55)
           echo "HTTP $HTTP_CODE"
           cat /tmp/response.json 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            exit 0
-          fi
-          exit 1
+          [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]
 
-  phase2-briefing:
-    needs: phase1-analyze
+  step3-summaries:
+    needs: step2-analyze
     runs-on: ubuntu-latest
     steps:
-      - name: Generate market briefing
+      - name: Refresh ticker summaries
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$DEPLOY_URL/api/cron/briefing" \
-            --max-time 65)
+            "$DEPLOY_URL/api/cron/summaries" --max-time 55)
           echo "HTTP $HTTP_CODE"
           cat /tmp/response.json 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            exit 0
-          fi
-          exit 1
+          [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]
 
-  phase2-accuracy:
-    needs: phase1-analyze
+  step4-parallel:
+    needs: step3-summaries
     runs-on: ubuntu-latest
     steps:
-      - name: Check prediction accuracy
+      - name: Alerts + Briefing + Accuracy (parallel)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X GET \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$DEPLOY_URL/api/cron/accuracy" \
-            --max-time 65)
-          echo "HTTP $HTTP_CODE"
-          cat /tmp/response.json 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            exit 0
-          fi
-          exit 1
+          call_endpoint() {
+            local name=$1
+            local path=$2
+            HTTP_CODE=$(curl -s -o "/tmp/${name}.json" -w "%{http_code}" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$DEPLOY_URL/api/cron/${path}" --max-time 55)
+            echo "${name}: HTTP $HTTP_CODE"
+            cat "/tmp/${name}.json" 2>/dev/null || true
+            echo ""
+          }
+
+          call_endpoint "alerts" "alerts" &
+          call_endpoint "briefing" "briefing" &
+          call_endpoint "accuracy" "accuracy" &
+          wait
+
+          echo "All secondary tasks completed"
