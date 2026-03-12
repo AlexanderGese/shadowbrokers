@@ -2,7 +2,7 @@ import { createServerClient } from "./supabase/server";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
-const APP_URL = "https://shadowbrokers-woad.vercel.app";
+const APP_URL = "https://www.shadowbrokers.app";
 
 interface TelegramConfig {
   user_id: string;

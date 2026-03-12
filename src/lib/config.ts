@@ -11,7 +11,7 @@ export const RSS_FEEDS = [
 
   // Tier 2 — Business & investing
   { name: "Bloomberg via Google", url: "https://news.google.com/rss/search?q=site:bloomberg.com+markets&hl=en-US&gl=US&ceid=US:en", source: "bloomberg" },
-  { name: "WSJ Markets", url: "https://feeds.a]omg.com/rss/RSSMarketsMain.xml", source: "wsj" },
+  { name: "WSJ Markets", url: "https://feeds.content.wsj.com/rss/RSSMarketsMain.xml", source: "wsj" },
   { name: "Barron's", url: "https://feeds.barrons.com/barrons/articles", source: "barrons" },
   { name: "Investing.com", url: "https://rsshub.app/investing/news/stock-market-news", source: "investing" },
   { name: "Seeking Alpha", url: "https://seekingalpha.com/market_currents.xml", source: "seekingalpha" },

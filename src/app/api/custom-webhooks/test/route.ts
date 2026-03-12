@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     timestamp: new Date().toISOString(),
     data: {
       message: "ShadowBrokers webhook is configured and working.",
-      url: "https://shadowbrokers-woad.vercel.app/dashboard",
+      url: "https://www.shadowbrokers.app/dashboard",
     },
     text: "[TEST] ShadowBrokers webhook is working correctly.",
   });

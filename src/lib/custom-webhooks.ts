@@ -1,7 +1,7 @@
 import { createServerClient } from "./supabase/server";
 import { createHmac } from "crypto";
 
-const APP_URL = "https://shadowbrokers-woad.vercel.app";
+const APP_URL = "https://www.shadowbrokers.app";
 
 interface CustomWebhookConfig {
   id: string;

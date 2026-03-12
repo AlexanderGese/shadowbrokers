@@ -1,6 +1,6 @@
 import { createServerClient } from "./supabase/server";
 
-const APP_URL = "https://shadowbrokers-woad.vercel.app";
+const APP_URL = "https://www.shadowbrokers.app";
 
 interface WebhookConfig {
   user_id: string;
@@ -36,7 +36,7 @@ async function getActiveWebhooks(type: NotifyType): Promise<WebhookConfig[]> {
 
 const WEBHOOK_IDENTITY = {
   username: "SHADOWBROKERS",
-  avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
+  avatar_url: "https://www.shadowbrokers.app/icon-512.png",
 };
 
 async function sendDiscordEmbed(webhookUrl: string, embed: Record<string, unknown>): Promise<boolean> {

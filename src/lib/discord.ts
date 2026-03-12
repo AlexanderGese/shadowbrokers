@@ -1,5 +1,5 @@
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
-const APP_URL = "https://shadowbrokers-woad.vercel.app";
+const APP_URL = "https://www.shadowbrokers.app";
 
 interface DiscordEmbed {
   title: string;
@@ -18,7 +18,7 @@ async function sendWebhook(embeds: DiscordEmbed[]): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       username: "SHADOWBROKERS",
-      avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
+      avatar_url: "https://www.shadowbrokers.app/icon-512.png",
       embeds,
     }),
   });

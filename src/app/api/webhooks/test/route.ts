@@ -24,7 +24,7 @@ export async function POST() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: "SHADOWBROKERS",
-        avatar_url: "https://shadowbrokers-woad.vercel.app/icon-512.png",
+        avatar_url: "https://www.shadowbrokers.app/icon-512.png",
         embeds: [{
           title: "SHADOWBROKERS — Test Notification",
           description: "Your Discord webhook is working correctly. You'll receive alerts, briefings, and danger signals here.",
