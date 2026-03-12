@@ -6,8 +6,7 @@ const COOKIE_OPTIONS = {
   path: "/",
   sameSite: "lax" as const,
   secure: true,
-  // Don't set domain — let browser default to current host
-  // This works for both www.shadowbrokers.app and localhost
+  maxAge: 60 * 60 * 24 * 7, // 7 days
 };
 
 export async function updateSession(request: NextRequest): Promise<{ response: NextResponse; user: User | null }> {

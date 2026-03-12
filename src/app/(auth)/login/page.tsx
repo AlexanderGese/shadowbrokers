@@ -44,8 +44,10 @@ export default function LoginPage() {
         setError(error.message);
         setLoading(false);
       } else {
-        router.push(redirectTo);
+        // Refresh server state first so middleware picks up the new session cookie,
+        // then navigate to the protected route
         router.refresh();
+        router.push(redirectTo);
       }
     } catch {
       setError("Network error");

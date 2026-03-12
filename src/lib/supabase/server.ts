@@ -6,6 +6,7 @@ const COOKIE_OPTIONS = {
   path: "/",
   sameSite: "lax" as const,
   secure: true,
+  maxAge: 60 * 60 * 24 * 7, // 7 days
 };
 
 // Service role client - bypasses RLS, used for cron jobs and analysis pipeline
