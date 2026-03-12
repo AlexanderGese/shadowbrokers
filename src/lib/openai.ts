@@ -423,9 +423,11 @@ export async function refreshTickerSummaries(): Promise<void> {
     return summary;
   });
 
-  for (const summary of summaries) {
+  // Batch upsert in chunks of 50
+  for (let i = 0; i < summaries.length; i += 50) {
+    const batch = summaries.slice(i, i + 50);
     await supabase
       .from("ticker_summaries")
-      .upsert(summary, { onConflict: "ticker" });
+      .upsert(batch, { onConflict: "ticker" });
   }
 }
