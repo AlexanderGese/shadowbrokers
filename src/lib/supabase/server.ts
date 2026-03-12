@@ -3,10 +3,12 @@ import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 const COOKIE_OPTIONS = {
+  domain: ".shadowbrokers.app",
   path: "/",
   sameSite: "lax" as const,
   secure: true,
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+  httpOnly: true,
+  maxAge: 60 * 60 * 24 * 30, // 30 days
 };
 
 // Service role client - bypasses RLS, used for cron jobs and analysis pipeline

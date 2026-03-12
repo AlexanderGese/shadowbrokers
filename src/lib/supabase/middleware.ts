@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
 const COOKIE_OPTIONS = {
+  domain: ".shadowbrokers.app",
   path: "/",
   sameSite: "lax" as const,
   secure: true,
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+  httpOnly: true,
+  maxAge: 60 * 60 * 24 * 30, // 30 days
 };
 
 export async function updateSession(request: NextRequest): Promise<{ response: NextResponse; user: User | null }> {
